@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Eye, ExternalLink } from 'lucide-react';
 import type { Reel } from '@/lib/mock-data';
-import Image from 'next/image';
+// Using regular img tag for external images to avoid config issues
+// import Image from 'next/image';
 
 interface ReelCardProps {
   reel: Reel;
@@ -30,13 +31,10 @@ export function ReelCard({ reel }: ReelCardProps) {
         onClick={handleReelClick}
       >
         <div className="relative aspect-[9/16] overflow-hidden bg-muted">
-          <Image
+          <img
             src={reel.thumbnailUrl}
             alt={reel.title}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            sizes="(max-width: 768px) 50vw, 33vw"
-            unoptimized
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
           
