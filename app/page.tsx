@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { LocationSearch } from '@/components/location-search';
 import { MealFilter } from '@/components/meal-filter';
 import { ReelCard } from '@/components/reel-card';
-import { mockReels, filterReels, type MealType } from '@/lib/mock-data';
-import { UtensilsCrossed, MapPin } from 'lucide-react';
+import { type MealType } from '@/lib/mock-data';
+import { InstagramReel } from '@/lib/types';
+import { UtensilsCrossed, MapPin, Search, Sparkles } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 export default function Page() {
   const [userLocation, setUserLocation] = useState<{
@@ -13,15 +16,16 @@ export default function Page() {
     lng: number;
     address: string;
   } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedMealTypes, setSelectedMealTypes] = useState<MealType[]>([]);
+  const [reels, setReels] = useState<InstagramReel[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLocationChange = (lat: number, lng: number, address: string) => {
-    setIsLoading(true);
     console.log('[v0] Location updated:', { lat, lng, address });
     setUserLocation({ lat, lng, address });
-    // Simulate loading delay for better UX
-    setTimeout(() => setIsLoading(false), 500);
   };
 
   const handleMealTypeToggle = (mealType: MealType) => {
@@ -32,15 +36,53 @@ export default function Page() {
     );
   };
 
-  const filteredReels = useMemo(() => {
-    return filterReels(
-      mockReels,
-      userLocation?.lat,
-      userLocation?.lng,
-      10, // 10km radius
-      selectedMealTypes.length > 0 ? selectedMealTypes : undefined
-    );
-  }, [userLocation, selectedMealTypes]);
+  const handleSearch = async () => {
+    if (!searchQuery && !userLocation && selectedMealTypes.length === 0) {
+      setError('Please enter a search term or select your location');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setHasSearched(true);
+
+    try {
+      console.log('[v0] Starting search...');
+      
+      const response = await fetch('/api/search-reels', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: searchQuery,
+          location: userLocation?.address || '',
+          mealType: selectedMealTypes.length > 0 ? selectedMealTypes.join(' ') : undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to search reels');
+      }
+
+      const data = await response.json();
+      console.log('[v0] Search results:', data.total, 'reels');
+      setReels(data.reels);
+    } catch (err) {
+      console.error('[v0] Search error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to search. Please try again.');
+      setReels([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,7 +95,7 @@ export default function Page() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-balance">FoodReels</h1>
-              <p className="text-xs text-muted-foreground">Discover places through reels</p>
+              <p className="text-xs text-muted-foreground">AI-powered restaurant discovery</p>
             </div>
           </div>
         </div>
@@ -63,15 +105,44 @@ export default function Page() {
       <main className="container px-4 md:px-6 py-6 md:py-8">
         {/* Search and filters section */}
         <div className="max-w-4xl mx-auto mb-8 space-y-6">
+          {/* Main search bar */}
+          <div className="bg-card rounded-lg border p-4 md:p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <Search className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Search for restaurants</h2>
+              <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+                <Sparkles className="h-3 w-3" />
+                <span>AI Filtered</span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="e.g., breakfast pune karvenagar, cafe, italian restaurant..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="flex-1"
+              />
+              <Button onClick={handleSearch} disabled={isLoading}>
+                {isLoading ? 'Searching...' : 'Search'}
+              </Button>
+            </div>
+            {error && (
+              <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
+          </div>
+
           {/* Location search */}
           <div className="bg-card rounded-lg border p-4 md:p-6 shadow-sm">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <MapPin className="h-5 w-5 text-primary" />
-              Find restaurants near you
+              Location
             </h2>
             <LocationSearch
               onLocationChange={handleLocationChange}
-              isLoading={isLoading}
+              isLoading={false}
             />
             {userLocation && (
               <div className="mt-4 p-3 bg-muted rounded-lg">
@@ -97,51 +168,76 @@ export default function Page() {
         {/* Results section */}
         <div className="max-w-7xl mx-auto">
           {/* Results header */}
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-2">
-              {userLocation ? 'Reels near you' : 'Popular reels'}
-            </h2>
-            <p className="text-muted-foreground">
-              {isLoading ? (
-                'Loading...'
-              ) : (
-                <>
-                  Found {filteredReels.length} reel{filteredReels.length !== 1 ? 's' : ''}
-                  {selectedMealTypes.length > 0 && (
-                    <span>
-                      {' '}
-                      for{' '}
-                      {selectedMealTypes.map((type, i) => (
-                        <span key={type}>
-                          {i > 0 && (i === selectedMealTypes.length - 1 ? ' and ' : ', ')}
-                          <span className="font-medium">{type}</span>
-                        </span>
-                      ))}
-                    </span>
-                  )}
-                </>
-              )}
-            </p>
-          </div>
+          {hasSearched && (
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold mb-2">
+                {isLoading ? 'Searching Instagram reels...' : 'Search Results'}
+              </h2>
+              <p className="text-muted-foreground">
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 animate-pulse" />
+                    AI is analyzing reels for relevance and quality...
+                  </span>
+                ) : (
+                  <>
+                    Found {reels.length} relevant reel{reels.length !== 1 ? 's' : ''}
+                    {selectedMealTypes.length > 0 && (
+                      <span>
+                        {' '}
+                        for{' '}
+                        {selectedMealTypes.map((type, i) => (
+                          <span key={type}>
+                            {i > 0 && (i === selectedMealTypes.length - 1 ? ' and ' : ', ')}
+                            <span className="font-medium">{type}</span>
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                  </>
+                )}
+              </p>
+            </div>
+          )}
 
           {/* Reels grid */}
-          {filteredReels.length > 0 ? (
+          {isLoading ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filteredReels.map((reel) => (
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="aspect-[9/16] bg-muted rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : hasSearched && reels.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {reels.map((reel) => (
                 <ReelCard key={reel.id} reel={reel} />
               ))}
             </div>
-          ) : (
+          ) : hasSearched ? (
             <div className="text-center py-16">
               <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
                 <UtensilsCrossed className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">No reels found</h3>
+              <h3 className="text-lg font-semibold mb-2">No relevant reels found</h3>
               <p className="text-muted-foreground max-w-md mx-auto">
-                {userLocation
-                  ? 'Try adjusting your filters or searching in a different location.'
-                  : 'Enter your location to discover restaurants and cafes near you.'}
+                Try adjusting your search terms or location. Our AI filters ensure only food-related content is shown.
               </p>
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 mx-auto mb-4 flex items-center justify-center">
+                <Search className="h-10 w-10 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Discover amazing restaurants</h3>
+              <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                Search for your favorite meals, enter your location, and let our AI find the best Instagram reels from restaurants and creators near you.
+              </p>
+              <div className="flex flex-wrap gap-2 justify-center text-sm">
+                <span className="px-3 py-1 bg-muted rounded-full">breakfast pune</span>
+                <span className="px-3 py-1 bg-muted rounded-full">cafe karvenagar</span>
+                <span className="px-3 py-1 bg-muted rounded-full">dinner spots</span>
+                <span className="px-3 py-1 bg-muted rounded-full">dessert places</span>
+              </div>
             </div>
           )}
         </div>
@@ -150,7 +246,10 @@ export default function Page() {
       {/* Footer */}
       <footer className="border-t mt-16">
         <div className="container px-4 md:px-6 py-8 text-center text-sm text-muted-foreground">
-          <p>Discover the best restaurants and cafes through authentic content</p>
+          <p className="flex items-center justify-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            Powered by AI to show only relevant food content from Instagram
+          </p>
         </div>
       </footer>
     </div>
