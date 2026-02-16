@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LocationSearch } from '@/components/location-search';
 import { MealFilter } from '@/components/meal-filter';
 import { ReelCard } from '@/components/reel-card';
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 export default function Page() {
+  const [mounted, setMounted] = useState(false);
   const [userLocation, setUserLocation] = useState<{
     lat: number;
     lng: number;
@@ -22,6 +23,10 @@ export default function Page() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLocationChange = (lat: number, lng: number, address: string) => {
     console.log('[v0] Location updated:', { lat, lng, address });
@@ -83,6 +88,10 @@ export default function Page() {
       handleSearch();
     }
   };
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
