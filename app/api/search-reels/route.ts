@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { searchInstagramReels, extractHashtags, formatInstagramUrl, formatViewCount } from '@/lib/instagram-api'
 import { analyzeReelContent } from '@/lib/ai-analyzer'
 import { InstagramReel } from '@/lib/types'
+import { searchMockReels, mockAIDelay } from '@/lib/mock-search'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +18,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Construct search query
+    // Check if Instagram API is configured
+    const hasRapidAPIKey = !!process.env.RAPIDAPI_KEY
+
+    if (!hasRapidAPIKey) {
+      // Use mock search with simulated AI delay
+      console.log('[v0] Using mock search (no RapidAPI key configured)')
+      
+      await mockAIDelay()
+      
+      const filteredReels = searchMockReels(query, location, mealType)
+      
+      console.log('[v0] Mock search results:', filteredReels.length)
+      
+      return NextResponse.json({
+        reels: filteredReels,
+        total: filteredReels.length,
+        usingMockData: true,
+      })
+    }
+
+    // Real Instagram API search
     const searchQuery = [mealType, query, location].filter(Boolean).join(' ')
     
     console.log('[v0] Fetching reels from Instagram...')

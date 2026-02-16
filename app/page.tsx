@@ -23,6 +23,7 @@ export default function Page() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usingMockData, setUsingMockData] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -74,6 +75,7 @@ export default function Page() {
       const data = await response.json();
       console.log('[v0] Search results:', data.total, 'reels');
       setReels(data.reels);
+      setUsingMockData(data.usingMockData || false);
     } catch (err) {
       console.error('[v0] Search error:', err);
       setError(err instanceof Error ? err.message : 'Failed to search. Please try again.');
@@ -112,6 +114,25 @@ export default function Page() {
 
       {/* Main content */}
       <main className="container px-4 md:px-6 py-6 md:py-8">
+        {/* Mock data notice */}
+        {usingMockData && hasSearched && (
+          <div className="max-w-4xl mx-auto mb-6">
+            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Sparkles className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                    Using Demo Mode
+                  </h3>
+                  <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
+                    Currently showing sample data with simulated AI filtering. To enable real Instagram reel search, add your RapidAPI key in the Vars section of the sidebar.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Search and filters section */}
         <div className="max-w-4xl mx-auto mb-8 space-y-6">
           {/* Main search bar */}
