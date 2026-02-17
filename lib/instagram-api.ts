@@ -1,5 +1,19 @@
 import { RapidAPIReelResponse } from './types'
 
+/**
+ * Instagram API Configuration
+ * 
+ * This file is configured for "Instagram Scraper API 2" on RapidAPI.
+ * If you subscribed to a different Instagram API, update the endpoint and host below.
+ * 
+ * Common RapidAPI Instagram APIs:
+ * 1. Instagram Scraper API 2: instagram-scraper-api2.p.rapidapi.com
+ * 2. Instagram Bulk Profile Scrapper: instagram-bulk-profile-scrapper.p.rapidapi.com  
+ * 3. Instagram API: instagram47.p.rapidapi.com
+ * 
+ * Check your RapidAPI subscription dashboard for the correct endpoint and host.
+ */
+
 export async function searchInstagramReels(
   query: string,
   location?: string
@@ -19,6 +33,7 @@ export async function searchInstagramReels(
     console.log('[v0] Calling Instagram API with hashtag:', hashtag)
     
     // Using RapidAPI Instagram API endpoint for hashtag search
+    // Update this URL and host if using a different Instagram API
     const response = await fetch(
       `https://instagram-scraper-api2.p.rapidapi.com/v1/hashtag?hashtag=${encodeURIComponent(hashtag)}`,
       {
