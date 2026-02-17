@@ -16,6 +16,8 @@ export async function searchInstagramReels(
   const hashtag = searchQuery.replace(/\s+/g, '')
 
   try {
+    console.log('[v0] Calling Instagram API with hashtag:', hashtag)
+    
     // Using RapidAPI Instagram API endpoint for hashtag search
     const response = await fetch(
       `https://instagram-scraper-api2.p.rapidapi.com/v1/hashtag?hashtag=${encodeURIComponent(hashtag)}`,
@@ -28,11 +30,16 @@ export async function searchInstagramReels(
       }
     )
 
+    console.log('[v0] Instagram API response status:', response.status)
+
     if (!response.ok) {
-      throw new Error(`Instagram API error: ${response.status}`)
+      const errorText = await response.text()
+      console.error('[v0] Instagram API error details:', errorText)
+      throw new Error(`Instagram API error: ${response.status} - ${errorText}`)
     }
 
     const data = await response.json()
+    console.log('[v0] Instagram API data structure:', Object.keys(data))
     
     // Extract reels from the response
     const reels = data.data?.items || []
@@ -40,6 +47,7 @@ export async function searchInstagramReels(
     // Filter for video content (reels)
     const videoReels = reels.filter((item: any) => item.video_url)
     
+    console.log('[v0] Found video reels:', videoReels.length)
     return videoReels.slice(0, 20) // Limit to 20 reels
   } catch (error) {
     console.error('[v0] Instagram API Error:', error)

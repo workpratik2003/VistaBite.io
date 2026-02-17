@@ -43,8 +43,26 @@ export async function POST(request: NextRequest) {
     
     console.log('[v0] Fetching reels from Instagram...')
     
-    // Fetch reels from Instagram API
-    const rawReels = await searchInstagramReels(searchQuery, location)
+    // Fetch reels from Instagram API with fallback to mock data
+    let rawReels
+    let usingFallback = false
+    
+    try {
+      rawReels = await searchInstagramReels(searchQuery, location)
+    } catch (apiError) {
+      console.error('[v0] Instagram API failed, falling back to mock data:', apiError)
+      
+      // Fallback to mock data if API fails
+      await mockAIDelay()
+      const filteredReels = searchMockReels(query, location, mealType)
+      
+      return NextResponse.json({
+        reels: filteredReels,
+        total: filteredReels.length,
+        usingMockData: true,
+        apiError: apiError instanceof Error ? apiError.message : 'API Error',
+      })
+    }
     
     console.log('[v0] Fetched reels:', rawReels.length)
 
