@@ -188,6 +188,22 @@ export async function submitReel(data: {
 }
 
 /**
+ * Get a single submission by ID
+ */
+export async function getSubmission(submissionId: string) {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM submissions WHERE id = $1`,
+      [submissionId]
+    )
+    return result.rows[0] || null
+  } catch (error) {
+    console.error('[v0] Error fetching submission:', error)
+    throw error
+  }
+}
+
+/**
  * Get all pending submissions (for admin)
  */
 export async function getPendingSubmissions() {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { approveSubmission } from '@/lib/db'
+import { approveSubmission, getSubmission } from '@/lib/db'
+import { sendApprovalEmail } from '@/lib/email'
 
 export async function POST(
   request: NextRequest,
@@ -7,9 +8,18 @@ export async function POST(
 ) {
   try {
     const { id } = await params
+    
+    // Get submission details before approving
+    const submission = await getSubmission(id)
+    
     const result = await approveSubmission(id)
     
     console.log('[v0] Submission approved:', id)
+    
+    // Send approval email to creator
+    if (submission) {
+      await sendApprovalEmail(submission.restaurant_name, submission.creator_email)
+    }
     
     return NextResponse.json({
       success: true,

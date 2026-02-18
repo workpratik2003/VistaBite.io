@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { submitReel } from '@/lib/db'
+import { sendNewSubmissionNotification } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,6 +56,14 @@ export async function POST(request: NextRequest) {
     })
 
     console.log('[v0] Submission created:', result.id)
+
+    // Send notification email to admin
+    await sendNewSubmissionNotification(
+      restaurant_name,
+      creator_name,
+      instagram_url,
+      result.id
+    )
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { rejectSubmission } from '@/lib/db'
+import { rejectSubmission, getSubmission } from '@/lib/db'
+import { sendRejectionEmail } from '@/lib/email'
 
 export async function POST(
   request: NextRequest,
@@ -7,9 +8,24 @@ export async function POST(
 ) {
   try {
     const { id } = await params
+    const body = await request.json()
+    const { reason } = body
+    
+    // Get submission details before rejecting
+    const submission = await getSubmission(id)
+    
     const result = await rejectSubmission(id)
     
     console.log('[v0] Submission rejected:', id)
+    
+    // Send rejection email to creator
+    if (submission) {
+      await sendRejectionEmail(
+        submission.restaurant_name,
+        reason || 'Does not meet content guidelines',
+        submission.creator_email
+      )
+    }
     
     return NextResponse.json({
       success: true,
