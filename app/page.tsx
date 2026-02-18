@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { LocationSearch } from '@/components/location-search';
 import { MealFilter } from '@/components/meal-filter';
 import { ReelCard } from '@/components/reel-card';
+import SubmitReelForm from '@/components/submit-reel-form';
 import { type MealType } from '@/lib/mock-data';
 import { InstagramReel } from '@/lib/types';
 import { UtensilsCrossed, MapPin, Search, Sparkles } from 'lucide-react';
@@ -53,8 +54,34 @@ export default function Page() {
     setHasSearched(true);
 
     try {
-      console.log('[v0] Starting search...');
+      console.log('[v0] Starting search from database...');
       
+      // First try to fetch from database
+      const dbResponse = await fetch('/api/search-reels-db', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: searchQuery,
+          location: userLocation?.address || '',
+          mealType: selectedMealTypes.length > 0 ? selectedMealTypes[0] : undefined,
+        }),
+      });
+
+      if (dbResponse.ok) {
+        const dbData = await dbResponse.json();
+        console.log('[v0] Database search results:', dbData.total, 'reels');
+        
+        if (dbData.reels && dbData.reels.length > 0) {
+          setReels(dbData.reels);
+          setUsingMockData(false);
+          return;
+        }
+      }
+
+      // Fallback to original search API
+      console.log('[v0] No database results, trying fallback search...');
       const response = await fetch('/api/search-reels', {
         method: 'POST',
         headers: {
@@ -282,6 +309,9 @@ export default function Page() {
           </p>
         </div>
       </footer>
+
+      {/* Submit Reel Form */}
+      <SubmitReelForm />
     </div>
   );
 }
