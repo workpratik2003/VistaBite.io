@@ -78,7 +78,7 @@ export async function getFilteredReels(
     }
 
     if (location) {
-      query += ` AND (location_city ILIKE $${paramIndex} OR location_address ILIKE $${paramIndex})`
+      query += ` AND (city ILIKE $${paramIndex} OR restaurant_address ILIKE $${paramIndex})`
       params.push(`%${location}%`)
       paramIndex++
     }
@@ -104,23 +104,23 @@ export async function searchReels(query: string, location?: string, mealType?: s
       creator_name, 
       instagram_url, 
       meal_types, 
-      location_city, 
-      location_address,
-      description,
+      city, 
+      restaurant_address,
+      reel_description,
       created_at
     FROM submissions 
     WHERE status = $1 
     AND (
       restaurant_name ILIKE $2 
       OR creator_name ILIKE $2 
-      OR description ILIKE $2
+      OR reel_description ILIKE $2
     )`
 
     const params: any[] = ['approved', `%${query}%`]
     let paramIndex = 3
 
     if (location) {
-      sqlQuery += ` AND (location_city ILIKE $${paramIndex} OR location_address ILIKE $${paramIndex})`
+      sqlQuery += ` AND (city ILIKE $${paramIndex} OR restaurant_address ILIKE $${paramIndex})`
       params.push(`%${location}%`)
       paramIndex++
     }
@@ -162,9 +162,9 @@ export async function submitReel(data: {
         creator_email,
         instagram_url,
         meal_types,
-        location_city,
-        location_address,
-        description,
+        city,
+        restaurant_address,
+        reel_description,
         status
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING id, created_at`,
@@ -173,7 +173,7 @@ export async function submitReel(data: {
         data.creator_name,
         data.creator_email,
         data.instagram_url,
-        JSON.stringify(data.meal_types),
+        data.meal_types,
         data.location_city,
         data.location_address,
         data.description,
