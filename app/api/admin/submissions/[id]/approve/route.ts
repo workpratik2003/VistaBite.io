@@ -26,9 +26,11 @@ export async function POST(
       submission: result,
     })
   } catch (error) {
-    console.error('[v0] Approve error:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    console.error('[v0] Approve error:', errorMessage)
+    console.error('[v0] Full error:', error)
     return NextResponse.json(
-      { error: 'Failed to approve submission' },
+      { error: `Failed to approve submission: ${errorMessage}` },
       { status: 500 }
     )
   }

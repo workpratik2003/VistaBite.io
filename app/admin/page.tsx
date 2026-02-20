@@ -12,9 +12,9 @@ interface Submission {
   creator_email: string
   instagram_url: string
   meal_types: string[]
-  location_city: string
-  location_address: string
-  description: string
+  city: string
+  restaurant_address: string
+  reel_description: string
   status: 'pending' | 'approved' | 'rejected'
   created_at: string
 }
@@ -170,7 +170,7 @@ export default function AdminDashboard() {
                   <div className="space-y-4">
                     <div>
                       <h3 className="text-lg font-semibold">{submission.restaurant_name}</h3>
-                      <p className="text-sm text-muted-foreground">{submission.location_city}</p>
+                      <p className="text-sm text-muted-foreground">{submission.city}</p>
                     </div>
 
                     <div className="space-y-2">
@@ -179,6 +179,11 @@ export default function AdminDashboard() {
                         <p className="text-sm">{submission.creator_name}</p>
                         <p className="text-xs text-muted-foreground">{submission.creator_email}</p>
                       </div>
+                    </div>
+
+                    <div>
+                      <span className="text-xs font-semibold text-muted-foreground uppercase">Location</span>
+                      <p className="text-sm">{submission.restaurant_address}</p>
                     </div>
 
                     <div>
@@ -192,10 +197,10 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    {submission.description && (
+                    {submission.reel_description && (
                       <div>
                         <span className="text-xs font-semibold text-muted-foreground uppercase">Description</span>
-                        <p className="text-sm mt-1">{submission.description}</p>
+                        <p className="text-sm mt-1">{submission.reel_description}</p>
                       </div>
                     )}
 
