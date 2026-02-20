@@ -57,13 +57,17 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0] Submission created:', result.id)
 
-    // Send notification email to admin
-    await sendNewSubmissionNotification(
-      restaurant_name,
-      creator_name,
-      instagram_url,
-      result.id
-    )
+    // Send notification email to admin (don't fail submission if email fails)
+    try {
+      await sendNewSubmissionNotification(
+        restaurant_name,
+        creator_name,
+        instagram_url,
+        result.id
+      )
+    } catch (emailError) {
+      console.warn('[v0] Email notification failed but submission succeeded:', emailError)
+    }
 
     return NextResponse.json({
       success: true,
@@ -72,8 +76,10 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('[v0] Submission error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Failed to submit reel'
+    console.error('[v0] Error details:', { error, errorMessage })
     return NextResponse.json(
-      { error: 'Failed to submit reel. Please try again.' },
+      { error: `Failed to submit reel: ${errorMessage}` },
       { status: 500 }
     )
   }

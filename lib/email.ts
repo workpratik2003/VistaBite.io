@@ -2,8 +2,8 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@foodreels.local'
-const FROM_EMAIL = 'noreply@foodreels.app'
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'support@foodreels.app'
+const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev'
 
 export async function sendNewSubmissionNotification(
   restaurantName: string,

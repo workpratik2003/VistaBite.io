@@ -50,6 +50,8 @@ export default function SubmitReelForm() {
     setIsLoading(true)
 
     try {
+      console.log('[v0] Submitting form with data:', formData)
+      
       const response = await fetch('/api/submit-reel', {
         method: 'POST',
         headers: {
@@ -59,9 +61,11 @@ export default function SubmitReelForm() {
       })
 
       const data = await response.json()
+      console.log('[v0] Submit response:', { status: response.status, data })
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit reel')
+        console.error('[v0] Submit failed:', data)
+        throw new Error(data.error || `Failed to submit reel (Status: ${response.status})`)
       }
 
       setSubmitted(true)
