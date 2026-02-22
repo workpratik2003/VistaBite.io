@@ -30,6 +30,16 @@ export default function Page() {
     setMounted(true);
   }, []);
 
+  const handleStartExploring = () => {
+    setHasSearched(true);
+    setTimeout(() => {
+      const searchElement = document.getElementById('search-section');
+      if (searchElement) {
+        searchElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
   const handleLocationChange = (lat: number, lng: number, address: string) => {
     console.log('[v0] Location updated:', { lat, lng, address });
     setUserLocation({ lat, lng, address });
@@ -149,7 +159,7 @@ export default function Page() {
             </p>
             
             <button
-              onClick={() => document.getElementById('search-section')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={handleStartExploring}
               className="px-8 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:bg-primary/90 transition-colors inline-block"
             >
               Start Exploring
