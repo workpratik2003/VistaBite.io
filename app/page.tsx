@@ -122,6 +122,44 @@ export default function Page() {
     return null;
   }
 
+  // Show hero section if no search has been made
+  if (!hasSearched) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,107,53,0.1),transparent_50%)]"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(255,107,53,0.05),transparent_50%)]"></div>
+        </div>
+        
+        <div className="relative z-10 text-center px-4 md:px-6 max-w-2xl">
+          {/* Brand Name */}
+          <h1 className="text-7xl md:text-8xl lg:text-9xl font-bold tracking-tighter mb-6 text-balance">
+            <span className="text-foreground">Vistabite</span>
+          </h1>
+          
+          {/* Slogan */}
+          <p className="text-xl md:text-2xl lg:text-3xl font-light text-foreground/80 mb-12 tracking-wide leading-relaxed">
+            See it. Crave it. Bite it.
+          </p>
+          
+          {/* CTA */}
+          <div className="space-y-8">
+            <p className="text-sm md:text-base text-muted-foreground uppercase tracking-widest">
+              Discover authentic food experiences through Instagram reels
+            </p>
+            
+            <button
+              onClick={() => document.getElementById('search-section')?.scrollIntoView({ behavior: 'smooth' })}
+              className="px-8 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:bg-primary/90 transition-colors inline-block"
+            >
+              Start Exploring
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -140,7 +178,7 @@ export default function Page() {
       </header>
 
       {/* Main content */}
-      <main className="container px-4 md:px-6 py-6 md:py-8">
+      <main className="container px-4 md:px-6 py-6 md:py-8" id="search-section">
         {/* Mock data notice */}
         {usingMockData && hasSearched && (
           <div className="max-w-4xl mx-auto mb-6">

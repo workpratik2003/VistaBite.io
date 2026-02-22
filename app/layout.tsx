@@ -7,8 +7,8 @@ const _geist = Geist({ subsets: ['latin'] })
 const _geistMono = Geist_Mono({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'FoodReels - Discover Restaurants Through Instagram Reels',
-  description: 'Find the best restaurants and cafes near you through authentic Instagram reels from content creators and owners. Filter by meal type and location.',
+  title: 'Vistabite - See it. Crave it. Bite it.',
+  description: 'Discover authentic food experiences through Instagram reels. See restaurants and cafes near you, filter by meal type, and bite into culinary adventures.',
   generator: 'v0.app',
 }
 
