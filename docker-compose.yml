@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: vistabite_db
+    environment:
+      POSTGRES_USER: vistabite
+      POSTGRES_PASSWORD: vistabite_password
+      POSTGRES_DB: vistabite
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vistabite"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Python Microservices
+  python-services:
+    build:
+      context: ./python-services
+      dockerfile: Dockerfile
+    container_name: vistabite_services
+    ports:
+      - "8001:8001"  # Content Analyzer
+      - "8002:8002"  # Analytics
+    environment:
+      DATABASE_URL: postgresql://vistabite:vistabite_password@postgres:5432/vistabite
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      FRONTEND_URL: http://localhost:3000
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./python-services:/app
+    restart: unless-stopped
+
+  # Next.js Frontend
+  next-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vistabite_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_CONTENT_ANALYZER_URL: http://python-services:8001
+      NEXT_PUBLIC_ANALYTICS_URL: http://python-services:8002
+    depends_on:
+      - python-services
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: vistabite_network
