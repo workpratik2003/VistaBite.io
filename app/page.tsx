@@ -7,7 +7,7 @@ import { ReelCard } from '@/components/reel-card';
 import SubmitReelForm from '@/components/submit-reel-form';
 import { type MealType } from '@/lib/mock-data';
 import { InstagramReel } from '@/lib/types';
-import { UtensilsCrossed, MapPin, Search, Sparkles, Sun, CheckCircle } from 'lucide-react';
+import { UtensilsCrossed, MapPin, Search, Sparkles, CheckCircle, Sun } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -46,19 +46,19 @@ export default function Page() {
     setSelectedMealTypes((prev) =>
       prev.includes(mealType)
         ? prev.filter((type) => type !== mealType)
-        : [...prev, mealType]
+        : [...prev, mealType].slice(0, 2)
     );
   };
 
   const isSearchEnabled = 
     searchQuery.trim() !== '' && 
-    userLocation && 
-    locationConfirmed && 
+    userLocation !== null && 
+    locationConfirmed === true && 
     selectedMealTypes.length > 0;
 
   const handleSearch = async () => {
     if (!isSearchEnabled) {
-      setError('Please fill in all fields: restaurant name, confirm location, and select meal type');
+      setError('Please fill all three sections: restaurant name, confirm location, and select meal type');
       return;
     }
 
@@ -69,13 +69,11 @@ export default function Page() {
     try {
       const dbResponse = await fetch('/api/search-reels-db', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: searchQuery,
           location: userLocation?.address || '',
-          mealType: selectedMealTypes.length > 0 ? selectedMealTypes[0] : undefined,
+          mealType: selectedMealTypes[0],
         }),
       });
 
@@ -84,19 +82,18 @@ export default function Page() {
         if (dbData.reels && dbData.reels.length > 0) {
           setReels(dbData.reels);
           setUsingMockData(false);
+          setIsLoading(false);
           return;
         }
       }
 
       const response = await fetch('/api/search-reels', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: searchQuery,
           location: userLocation?.address || '',
-          mealType: selectedMealTypes.length > 0 ? selectedMealTypes[0] : undefined,
+          mealType: selectedMealTypes[0],
         }),
       });
 
@@ -109,7 +106,8 @@ export default function Page() {
       setReels(data.reels);
       setUsingMockData(data.usingMockData || false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to search');
+      console.error('[v0] Search error:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -128,9 +126,9 @@ export default function Page() {
   if (!hasSearched) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,107,53,0.1),transparent_50%)]"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(255,107,53,0.05),transparent_50%)]"></div>
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl"></div>
         </div>
         
         <div className="relative z-10 text-center px-4 md:px-6 max-w-2xl">
@@ -171,15 +169,15 @@ export default function Page() {
       </div>
 
       <div className="relative z-10 container px-4 md:px-6 py-12 md:py-16" id="search-section">
-        {usingMockData && (
+        {usingMockData && hasSearched && (
           <div className="max-w-4xl mx-auto mb-8">
             <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <Sparkles className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">Using Demo Mode</h3>
-                  <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
-                    Currently showing sample data with simulated AI filtering.
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    Currently showing sample data. Add RapidAPI key for real Instagram reels.
                   </p>
                 </div>
               </div>
@@ -198,70 +196,82 @@ export default function Page() {
           </div>
 
           <div className="space-y-8 mb-8">
-            <div className="p-6 rounded-xl border-2 border-orange-200 bg-[hsl(var(--section-search))] shadow-sm hover:shadow-md transition-shadow">
+            {/* Section 1: Restaurant Name */}
+            <div className="p-6 rounded-xl border-2 border-orange-200 bg-orange-50 dark:bg-orange-950/20 shadow-sm hover:shadow-md transition-shadow">
               <label className="text-sm font-bold mb-3 block text-foreground flex items-center gap-2">
                 <UtensilsCrossed className="h-4 w-4 text-orange-600" />
-                Restaurant Name
+                Restaurant Name or Cuisine
               </label>
               <Input
                 type="text"
-                placeholder="e.g., cafe, pizza, biryani..."
+                placeholder="e.g., cafe, pizza, biryani, restaurant..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={handleKeyPress}
                 className="w-full bg-white/50 border-orange-300 focus:border-orange-500"
               />
-              {searchQuery && (
-                <p className="text-xs text-orange-600 mt-2 font-medium">✓ Filled</p>
+              {searchQuery.trim() !== '' && (
+                <p className="text-xs text-orange-600 mt-2 font-medium flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" /> Filled
+                </p>
               )}
             </div>
 
-            <div className="p-6 rounded-xl border-2 border-blue-200 bg-[hsl(var(--section-location))] shadow-sm hover:shadow-md transition-shadow">
+            {/* Section 2: Location */}
+            <div className="p-6 rounded-xl border-2 border-blue-200 bg-blue-50 dark:bg-blue-950/20 shadow-sm hover:shadow-md transition-shadow">
               <label className="text-sm font-bold mb-3 block text-foreground flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-blue-600" />
                 Location
               </label>
               <LocationSearch onLocationChange={handleLocationChange} isLoading={isLoading} />
-              {userLocation && !locationConfirmed && (
-                <Button
-                  onClick={handleConfirmLocation}
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 w-full border-blue-300 text-blue-600 hover:bg-blue-50"
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Confirm Location
-                </Button>
-              )}
-              {locationConfirmed && (
-                <p className="text-xs text-blue-600 mt-2 font-medium flex items-center gap-1">
-                  <CheckCircle className="h-3 w-3" /> {userLocation?.address}
-                </p>
+              {userLocation && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+                    {userLocation.address}
+                  </p>
+                  {!locationConfirmed && (
+                    <button
+                      onClick={handleConfirmLocation}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Confirm Location
+                    </button>
+                  )}
+                  {locationConfirmed && (
+                    <p className="text-xs text-blue-600 font-medium flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" /> Location confirmed
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 
-            <div className="p-6 rounded-xl border-2 border-purple-200 bg-[hsl(var(--section-filter))] shadow-sm hover:shadow-md transition-shadow">
+            {/* Section 3: Meal Type */}
+            <div className="p-6 rounded-xl border-2 border-purple-200 bg-purple-50 dark:bg-purple-950/20 shadow-sm hover:shadow-md transition-shadow">
               <label className="text-sm font-bold mb-3 block text-foreground flex items-center gap-2">
                 <Sun className="h-4 w-4 text-purple-600" />
-                Meal Type
+                Meal Type (max 2)
               </label>
               <MealFilter selectedMealTypes={selectedMealTypes} onMealTypeToggle={handleMealTypeToggle} />
               {selectedMealTypes.length > 0 && (
-                <p className="text-xs text-purple-600 mt-2 font-medium">✓ {selectedMealTypes.length} selected</p>
+                <p className="text-xs text-purple-600 mt-2 font-medium flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" /> {selectedMealTypes.length} selected
+                </p>
               )}
             </div>
           </div>
 
+          {/* Discover Restaurants Button */}
           <div className="flex justify-center mb-8">
             <Button
               onClick={handleSearch}
               disabled={!isSearchEnabled || isLoading}
-              className={`px-12 py-6 text-lg font-semibold transition-all ${
+              className={`px-12 py-6 text-lg font-semibold transition-all rounded-lg ${
                 isSearchEnabled
                   ? 'bg-slate-800 hover:bg-slate-900 text-white shadow-lg hover:shadow-xl'
                   : 'bg-slate-300 text-slate-500 cursor-not-allowed'
               }`}
-              size="lg"
             >
               <Search className="h-5 w-5 mr-2" />
               {isLoading ? 'Searching...' : 'Discover Restaurants'}
@@ -283,12 +293,10 @@ export default function Page() {
           )}
 
           {hasSearched && reels.length > 0 && (
-            <div className="space-y-8">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {reels.map((reel) => (
-                  <ReelCard key={reel.id} reel={reel} />
-                ))}
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {reels.map((reel) => (
+                <ReelCard key={reel.id} reel={reel} />
+              ))}
             </div>
           )}
 
@@ -300,7 +308,7 @@ export default function Page() {
         </div>
       </div>
 
-      <footer className="border-t mt-16">
+      <footer className="border-t mt-16 relative z-10">
         <div className="container px-4 md:px-6 py-8 text-center text-sm text-muted-foreground">
           <p className="flex items-center justify-center gap-2">
             <Sparkles className="h-4 w-4" />
