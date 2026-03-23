@@ -7,7 +7,7 @@ import { ReelCard } from '@/components/reel-card';
 import SubmitReelForm from '@/components/submit-reel-form';
 import { type MealType } from '@/lib/mock-data';
 import { InstagramReel } from '@/lib/types';
-import { UtensilsCrossed, MapPin, Search, Sparkles } from 'lucide-react';
+import { UtensilsCrossed, MapPin, Search, Sparkles, Sun } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -53,9 +53,11 @@ export default function Page() {
     );
   };
 
+  const isSearchEnabled = searchQuery.trim() !== '' && userLocation && selectedMealTypes.length > 0;
+
   const handleSearch = async () => {
-    if (!searchQuery && !userLocation && selectedMealTypes.length === 0) {
-      setError('Please enter a search term or select your location');
+    if (!isSearchEnabled) {
+      setError('Please fill in all fields: search, location, and meal type');
       return;
     }
 
@@ -188,21 +190,124 @@ export default function Page() {
       </header>
 
       {/* Main content */}
-      <main className="container px-4 md:px-6 py-6 md:py-8" id="search-section">
-        {/* Mock data notice */}
-        {usingMockData && hasSearched && (
-          <div className="max-w-4xl mx-auto mb-6">
-            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <Sparkles className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">
-                    Using Demo Mode
-                  </h3>
-                  <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
-                    Currently showing sample data with simulated AI filtering. To enable real Instagram reel search, add your RapidAPI key in the Vars section of the sidebar.
-                  </p>
+      <main className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5" id="search-section">
+        {/* Decorative background elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="relative z-10 container px-4 md:px-6 py-12 md:py-16">
+          {/* Mock data notice */}
+          {usingMockData && hasSearched && (
+            <div className="max-w-4xl mx-auto mb-8">
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                      Using Demo Mode
+                    </h3>
+                    <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
+                      Currently showing sample data with simulated AI filtering. To enable real Instagram reel search, add your RapidAPI key in the Vars section of the sidebar.
+                    </p>
+                  </div>
                 </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Search and filters section */}
+          <div className="max-w-5xl mx-auto">
+            {/* Title */}
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold mb-3 text-foreground">
+                Discover Your Next Favorite Restaurant
+              </h2>
+              <p className="text-muted-foreground text-lg">
+                Fill in all three sections to find the perfect place
+              </p>
+            </div>
+
+            {/* Three Section Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              {/* Search Section */}
+              <div className="p-6 rounded-xl border-2 border-orange-200 bg-[hsl(var(--section-search))] shadow-sm hover:shadow-md transition-shadow">
+                <label className="text-sm font-bold mb-3 block text-foreground flex items-center gap-2">
+                  <UtensilsCrossed className="h-4 w-4 text-orange-600" />
+                  Restaurant Name
+                </label>
+                <Input
+                  type="text"
+                  placeholder="e.g., cafe, pizza, biryani..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className="w-full bg-white/50 border-orange-300 focus:border-orange-500"
+                />
+                {searchQuery && (
+                  <p className="text-xs text-orange-600 mt-2 font-medium">✓ Filled</p>
+                )}
+              </div>
+
+              {/* Location Section */}
+              <div className="p-6 rounded-xl border-2 border-blue-200 bg-[hsl(var(--section-location))] shadow-sm hover:shadow-md transition-shadow">
+                <label className="text-sm font-bold mb-3 block text-foreground flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-blue-600" />
+                  Location
+                </label>
+                <LocationSearch onLocationChange={handleLocationChange} isLoading={isLoading} />
+                {userLocation && (
+                  <p className="text-xs text-blue-600 mt-2 font-medium">✓ {userLocation.address}</p>
+                )}
+              </div>
+
+              {/* Meal Type Filter Section */}
+              <div className="p-6 rounded-xl border-2 border-purple-200 bg-[hsl(var(--section-filter))] shadow-sm hover:shadow-md transition-shadow">
+                <label className="text-sm font-bold mb-3 block text-foreground flex items-center gap-2">
+                  <Sun className="h-4 w-4 text-purple-600" />
+                  Meal Type
+                </label>
+                <MealFilter selectedMealTypes={selectedMealTypes} onMealTypeToggle={handleMealTypeToggle} />
+                {selectedMealTypes.length > 0 && (
+                  <p className="text-xs text-purple-600 mt-2 font-medium">✓ {selectedMealTypes.length} selected</p>
+                )}
+              </div>
+            </div>
+
+            {/* Search Button - Centered Below */}
+            <div className="flex justify-center mb-8">
+              <Button
+                onClick={handleSearch}
+                disabled={!isSearchEnabled || isLoading}
+                className={`px-12 py-3 text-lg font-semibold transition-all ${
+                  isSearchEnabled
+                    ? 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl'
+                    : 'bg-muted text-muted-foreground cursor-not-allowed'
+                }`}
+                size="lg"
+              >
+                <Search className="h-5 w-5 mr-2" />
+                {isLoading ? 'Searching...' : 'Discover Restaurants'}
+              </Button>
+            </div>
+
+            {/* Helper Text */}
+            {!isSearchEnabled && (
+              <div className="text-center mb-8">
+                <p className="text-sm text-muted-foreground">
+                  Fill all three sections to enable search
+                </p>
+              </div>
+            )}
+
+            {/* Error Message */}
+            {error && (
+              <div className="text-red-600 text-sm p-4 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800 mb-8">
+                {error}
+              </div>
+            )}
+          </div>
               </div>
             </div>
           </div>
