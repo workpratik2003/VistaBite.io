@@ -7,7 +7,7 @@ import { ReelCard } from '@/components/reel-card';
 import SubmitReelForm from '@/components/submit-reel-form';
 import { type MealType } from '@/lib/mock-data';
 import { InstagramReel } from '@/lib/types';
-import { UtensilsCrossed, MapPin, Search, Sparkles, Sun } from 'lucide-react';
+import { UtensilsCrossed, MapPin, Sparkles, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -25,6 +25,7 @@ export default function Page() {
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [usingMockData, setUsingMockData] = useState(false);
+  const [locationConfirmed, setLocationConfirmed] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -43,6 +44,11 @@ export default function Page() {
   const handleLocationChange = (lat: number, lng: number, address: string) => {
     console.log('[v0] Location updated:', { lat, lng, address });
     setUserLocation({ lat, lng, address });
+    setLocationConfirmed(false);
+  };
+
+  const handleConfirmLocation = () => {
+    setLocationConfirmed(true);
   };
 
   const handleMealTypeToggle = (mealType: MealType) => {
@@ -53,11 +59,11 @@ export default function Page() {
     );
   };
 
-  const isSearchEnabled = searchQuery.trim() !== '' && userLocation && selectedMealTypes.length > 0;
+  const isSearchEnabled = searchQuery.trim() !== '' && userLocation && locationConfirmed && selectedMealTypes.length > 0;
 
   const handleSearch = async () => {
     if (!isSearchEnabled) {
-      setError('Please fill in all fields: search, location, and meal type');
+      setError('Please fill in all fields: search, location (confirmed), and meal type');
       return;
     }
 
@@ -87,6 +93,7 @@ export default function Page() {
         if (dbData.reels && dbData.reels.length > 0) {
           setReels(dbData.reels);
           setUsingMockData(false);
+          setIsLoading(false);
           return;
         }
       }
@@ -114,16 +121,16 @@ export default function Page() {
       setReels(data.reels);
       setUsingMockData(data.usingMockData || false);
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred while searching';
+      setError(errorMessage);
       console.error('[v0] Search error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to search. Please try again.');
-      setReels([]);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && isSearchEnabled) {
+    if (e.key === 'Enter') {
       handleSearch();
     }
   };
@@ -132,6 +139,7 @@ export default function Page() {
     return null;
   }
 
+  // Show hero section if no search has been made
   if (!hasSearched) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
@@ -141,9 +149,13 @@ export default function Page() {
         </div>
         
         <div className="relative z-10 text-center px-4 md:px-6 max-w-2xl">
-          <h1 className="text-7xl md:text-8xl lg:text-9xl font-bold tracking-tighter mb-6 text-balance">
+          <h1 className="text-7xl md:text-8xl lg:text-9xl font-bold tracking-tighter mb-2 text-balance">
             <span className="text-foreground">Vistabite</span>
           </h1>
+          
+          <p className="text-sm md:text-base text-muted-foreground mb-6 tracking-widest uppercase">
+            AI powered restaurant discovery
+          </p>
           
           <p className="text-xl md:text-2xl lg:text-3xl font-light text-foreground/80 mb-12 tracking-wide leading-relaxed">
             See it. Crave it. Bite it.
@@ -167,196 +179,160 @@ export default function Page() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-              <UtensilsCrossed className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Vistabite</h1>
-              <p className="text-xs text-muted-foreground">Restaurant Discovery</p>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl"></div>
+      </div>
 
-      <main className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5" id="search-section">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl"></div>
-        </div>
-
-        <div className="relative z-10 container px-4 md:px-6 py-12 md:py-16">
-          {usingMockData && hasSearched && (
-            <div className="max-w-4xl mx-auto mb-8">
-              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <Sparkles className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">Using Demo Mode</h3>
-                    <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
-                      Currently showing sample data with simulated AI filtering. To enable real Instagram reel search, add your RapidAPI key in the Vars section of the sidebar.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-3 text-foreground">
-                Discover Your Next Favorite Restaurant
-              </h2>
-              <p className="text-muted-foreground text-lg">
-                Fill in all three sections to find the perfect place
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="p-6 rounded-xl border-2 border-orange-200 bg-[hsl(var(--section-search))] shadow-sm hover:shadow-md transition-shadow">
-                <label className="text-sm font-bold mb-3 block text-foreground flex items-center gap-2">
-                  <UtensilsCrossed className="h-4 w-4 text-orange-600" />
-                  Restaurant Name
-                </label>
-                <Input
-                  type="text"
-                  placeholder="e.g., cafe, pizza, biryani..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  className="w-full bg-white/50 border-orange-300 focus:border-orange-500"
-                />
-                {searchQuery && (
-                  <p className="text-xs text-orange-600 mt-2 font-medium">✓ Filled</p>
-                )}
-              </div>
-
-              <div className="p-6 rounded-xl border-2 border-blue-200 bg-[hsl(var(--section-location))] shadow-sm hover:shadow-md transition-shadow">
-                <label className="text-sm font-bold mb-3 block text-foreground flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-blue-600" />
-                  Location
-                </label>
-                <LocationSearch onLocationChange={handleLocationChange} isLoading={isLoading} />
-                {userLocation && (
-                  <p className="text-xs text-blue-600 mt-2 font-medium">✓ {userLocation.address}</p>
-                )}
-              </div>
-
-              <div className="p-6 rounded-xl border-2 border-purple-200 bg-[hsl(var(--section-filter))] shadow-sm hover:shadow-md transition-shadow">
-                <label className="text-sm font-bold mb-3 block text-foreground flex items-center gap-2">
-                  <Sun className="h-4 w-4 text-purple-600" />
-                  Meal Type
-                </label>
-                <MealFilter selectedMealTypes={selectedMealTypes} onMealTypeToggle={handleMealTypeToggle} />
-                {selectedMealTypes.length > 0 && (
-                  <p className="text-xs text-purple-600 mt-2 font-medium">✓ {selectedMealTypes.length} selected</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-center mb-8">
-              <Button
-                onClick={handleSearch}
-                disabled={!isSearchEnabled || isLoading}
-                className={`px-12 py-3 text-lg font-semibold transition-all ${
-                  isSearchEnabled
-                    ? 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl'
-                    : 'bg-muted text-muted-foreground cursor-not-allowed'
-                }`}
-                size="lg"
-              >
-                <Search className="h-5 w-5 mr-2" />
-                {isLoading ? 'Searching...' : 'Discover Restaurants'}
-              </Button>
-            </div>
-
-            {!isSearchEnabled && (
-              <div className="text-center mb-8">
-                <p className="text-sm text-muted-foreground">
-                  Fill all three sections to enable search
-                </p>
-              </div>
-            )}
-
-            {error && (
-              <div className="text-red-600 text-sm p-4 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800 mb-8">
-                {error}
-              </div>
-            )}
-          </div>
-
-          {hasSearched && (
-            <div className="max-w-7xl mx-auto mt-16">
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold mb-2">
-                  {isLoading ? 'Searching Instagram reels...' : 'Search Results'}
-                </h2>
-                <p className="text-muted-foreground">
-                  {isLoading ? (
-                    <span className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 animate-pulse" />
-                      AI is analyzing reels for relevance and quality...
-                    </span>
-                  ) : (
-                    <>
-                      Found {reels.length} relevant reel{reels.length !== 1 ? 's' : ''}
-                      {selectedMealTypes.length > 0 && (
-                        <span>
-                          {' '}
-                          for{' '}
-                          {selectedMealTypes.map((type, i) => (
-                            <span key={type}>
-                              {i > 0 && (i === selectedMealTypes.length - 1 ? ' and ' : ', ')}
-                              <span className="font-medium">{type}</span>
-                            </span>
-                          ))}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </p>
-              </div>
-
-              {isLoading ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {[...Array(8)].map((_, i) => (
-                    <div key={i} className="aspect-[9/16] bg-muted rounded-lg animate-pulse" />
-                  ))}
-                </div>
-              ) : reels.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {reels.map((reel) => (
-                    <ReelCard key={reel.id} reel={reel} />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-16">
-                  <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
-                    <UtensilsCrossed className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">No relevant reels found</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto">
-                    Try adjusting your search terms or location. Our AI filters ensure only food-related content is shown.
+      <div className="relative z-10 container px-4 md:px-6 py-12 md:py-16" id="search-section">
+        {/* Mock data notice */}
+        {usingMockData && hasSearched && (
+          <div className="max-w-2xl mx-auto mb-8">
+            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Sparkles className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                    Using Demo Mode
+                  </h3>
+                  <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
+                    Currently showing sample data with simulated AI filtering. To enable real Instagram reel search, add your RapidAPI key in the Vars section of the sidebar.
                   </p>
                 </div>
-              )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Search and filters section */}
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-3 text-foreground">
+              Discover Your Next Favorite Restaurant
+            </h2>
+            <p className="text-muted-foreground text-lg">
+              Fill in all sections to find the perfect place
+            </p>
+          </div>
+
+          {/* Section 1: Restaurant Name */}
+          <div className="mb-8 p-6 rounded-xl border-2 border-orange-200 bg-[hsl(var(--section-search))] shadow-sm hover:shadow-md transition-shadow">
+            <label className="text-sm font-bold mb-3 block text-foreground flex items-center gap-2">
+              <UtensilsCrossed className="h-5 w-5 text-orange-600" />
+              Restaurant Name
+            </label>
+            <Input
+              type="text"
+              placeholder="e.g., cafe, pizza, biryani..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="w-full bg-white/50 border-orange-300 focus:border-orange-500"
+            />
+            {searchQuery && (
+              <p className="text-xs text-orange-600 mt-2 font-medium">✓ Filled</p>
+            )}
+          </div>
+
+          {/* Section 2: Location */}
+          <div className="mb-8 p-6 rounded-xl border-2 border-blue-200 bg-[hsl(var(--section-location))] shadow-sm hover:shadow-md transition-shadow">
+            <label className="text-sm font-bold mb-3 block text-foreground flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-blue-600" />
+              Location
+            </label>
+            <LocationSearch onLocationChange={handleLocationChange} isLoading={isLoading} />
+            
+            {userLocation && (
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-sm text-blue-700 font-medium">
+                  {userLocation.address}
+                </p>
+                <Button
+                  onClick={handleConfirmLocation}
+                  variant={locationConfirmed ? "default" : "outline"}
+                  size="sm"
+                  className={`flex items-center gap-2 ${
+                    locationConfirmed
+                      ? 'bg-blue-600 text-white'
+                      : 'border-blue-300 text-blue-600'
+                  }`}
+                >
+                  <Check className="h-4 w-4" />
+                  {locationConfirmed ? 'Confirmed' : 'Confirm'}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Section 3: Meal Type Filter */}
+          <div className="mb-8 p-6 rounded-xl border-2 border-purple-200 bg-[hsl(var(--section-filter))] shadow-sm hover:shadow-md transition-shadow">
+            <label className="text-sm font-bold mb-3 block text-foreground flex items-center gap-2">
+              <span>🍽️</span>
+              Meal Type (Max 2)
+            </label>
+            <MealFilter selectedMealTypes={selectedMealTypes} onMealTypeToggle={handleMealTypeToggle} />
+            {selectedMealTypes.length > 0 && (
+              <p className="text-xs text-purple-600 mt-2 font-medium">✓ {selectedMealTypes.length} selected</p>
+            )}
+          </div>
+
+          {/* Search Button */}
+          <div className="flex justify-center mb-8">
+            <Button
+              onClick={handleSearch}
+              disabled={!isSearchEnabled || isLoading}
+              className={`px-12 py-3 text-lg font-semibold transition-all ${
+                isSearchEnabled
+                  ? 'bg-slate-800 hover:bg-slate-900 text-white shadow-lg hover:shadow-xl'
+                  : 'bg-muted text-muted-foreground cursor-not-allowed'
+              }`}
+              size="lg"
+            >
+              {isLoading ? 'Searching...' : 'Discover Restaurants'}
+            </Button>
+          </div>
+
+          {/* Helper Text */}
+          {!isSearchEnabled && (
+            <div className="text-center mb-8">
+              <p className="text-sm text-muted-foreground">
+                Fill all sections and confirm location to enable search
+              </p>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div className="text-red-600 text-sm p-4 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800 mb-8">
+              {error}
             </div>
           )}
         </div>
-      </main>
 
-      <footer className="border-t mt-16">
-        <div className="container px-4 md:px-6 py-8 text-center text-sm text-muted-foreground">
-          <p className="flex items-center justify-center gap-2">
-            <Sparkles className="h-4 w-4" />
-            Powered by AI to show only relevant food content from Instagram
-          </p>
-        </div>
-      </footer>
+        {/* Results Section */}
+        {hasSearched && reels.length > 0 && (
+          <div className="mt-16">
+            <h3 className="text-2xl font-bold mb-8 text-foreground">
+              Results for {searchQuery}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {reels.map((reel) => (
+                <ReelCard key={reel.id} reel={reel} />
+              ))}
+            </div>
+          </div>
+        )}
 
+        {/* No Results */}
+        {hasSearched && reels.length === 0 && !isLoading && (
+          <div className="mt-16 text-center">
+            <p className="text-muted-foreground text-lg">No results found. Try different search terms or location.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Submit Reel Form */}
       <SubmitReelForm />
     </div>
   );
