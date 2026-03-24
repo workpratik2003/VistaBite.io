@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 interface LocationSearchProps {
-  onLocationChange: (lat: number, lng: number, address: string) => void;
+  onLocationChange: (lat: number, lng: number, address: string, confirmed: boolean) => void;
   isLoading?: boolean;
 }
 
@@ -27,7 +27,7 @@ export function LocationSearch({ onLocationChange, isLoading }: LocationSearchPr
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        onLocationChange(latitude, longitude, 'Your current location');
+        onLocationChange(latitude, longitude, 'Your current location', true);
         setIsGettingLocation(false);
       },
       (error) => {
@@ -47,12 +47,12 @@ export function LocationSearch({ onLocationChange, isLoading }: LocationSearchPr
     e.preventDefault();
     if (!manualLocation.trim()) return;
 
-    // For demo purposes, use default NYC coordinates when manual location is entered
+    // For demo purposes, use default coordinates when manual location is entered
     // In production, you would use a geocoding API like Google Maps or Mapbox
     const defaultLat = 40.7580;
     const defaultLng = -73.9855;
     
-    onLocationChange(defaultLat, defaultLng, manualLocation);
+    onLocationChange(defaultLat, defaultLng, manualLocation, true);
     setError('');
   };
 
