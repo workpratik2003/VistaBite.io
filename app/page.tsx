@@ -31,9 +31,9 @@ export default function Page() {
     setMounted(true);
   }, []);
 
-  const handleLocationChange = (lat: number, lng: number, address: string) => {
+  const handleLocationChange = (lat: number, lng: number, address: string, confirmed: boolean) => {
     setUserLocation({ lat, lng, address });
-    setLocationConfirmed(false);
+    setLocationConfirmed(confirmed);
   };
 
   const handleConfirmLocation = () => {
