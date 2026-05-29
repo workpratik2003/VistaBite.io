@@ -5,6 +5,8 @@ import { LocationSearch } from '@/components/location-search';
 import { MealFilter } from '@/components/meal-filter';
 import { ReelCard } from '@/components/reel-card';
 import SubmitReelForm from '@/components/submit-reel-form';
+import { Header } from '@/components/header';
+import { CreatorSearchSidebar } from '@/components/creator-search-sidebar';
 import { type MealType } from '@/lib/mock-data';
 import { InstagramReel } from '@/lib/types';
 import { UtensilsCrossed, MapPin, Search, Sparkles, CheckCircle, Sun } from 'lucide-react';
@@ -125,7 +127,9 @@ export default function Page() {
 
   if (!hasSearched) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
+      <>
+        <Header />
+        <div className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl"></div>
@@ -158,11 +162,16 @@ export default function Page() {
           </div>
         </div>
       </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <>
+      <Header />
+      <div className="flex min-h-[calc(100vh-64px)]">
+        {/* Main content */}
+        <div className="flex-1 bg-gradient-to-br from-background via-background to-primary/5">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl"></div>
@@ -308,16 +317,23 @@ export default function Page() {
         </div>
       </div>
 
-      <footer className="border-t mt-16 relative z-10">
-        <div className="container px-4 md:px-6 py-8 text-center text-sm text-muted-foreground">
-          <p className="flex items-center justify-center gap-2">
-            <Sparkles className="h-4 w-4" />
-            Powered by AI to show only relevant food content
-          </p>
-        </div>
-      </footer>
+        <footer className="border-t mt-16 relative z-10">
+          <div className="container px-4 md:px-6 py-8 text-center text-sm text-muted-foreground">
+            <p className="flex items-center justify-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Powered by AI to show only relevant food content
+            </p>
+          </div>
+        </footer>
 
-      <SubmitReelForm />
+        <SubmitReelForm />
+      </div>
+
+      {/* Creator Search Sidebar */}
+      <aside className="w-80 border-l border-border bg-background overflow-y-auto">
+        <CreatorSearchSidebar />
+      </aside>
     </div>
+    </>
   );
 }
