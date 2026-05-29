@@ -14,3 +14,8 @@ cors==1.0.1
 python-multipart==0.0.6
 sqlalchemy==2.0.23
 psycopg2==2.9.9
+ffmpeg-python==0.2.1
+geoalchemy2==0.14.1
+shapely==2.0.2
+moviepy==1.0.3
+
