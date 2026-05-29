@@ -1,0 +1,53 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { Pool } from 'pg'
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+})
+
+export async function POST(request: NextRequest) {
+  try {
+    const { userId, role } = await request.json()
+
+    if (!userId || !role) {
+      return NextResponse.json(
+        { error: 'User ID and role required' },
+        { status: 400 }
+      )
+    }
+
+    if (!['user', 'content_maker'].includes(role)) {
+      return NextResponse.json(
+        { error: 'Invalid role' },
+        { status: 400 }
+      )
+    }
+
+    // Update user role
+    const result = await pool.query(
+      'UPDATE users SET role = $1, is_public = $2 WHERE id = $3 RETURNING id, role',
+      [role, role === 'content_maker', userId]
+    )
+
+    if (result.rows.length === 0) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
+    console.log('[v0] Role set for user:', userId, 'to', role)
+
+    return NextResponse.json({
+      success: true,
+      message: 'Role set successfully',
+      user: result.rows[0],
+    })
+  } catch (error) {
+    console.error('[v0] Set role error:', error)
+    return NextResponse.json(
+      { error: 'Failed to set role' },
+      { status: 500 }
+    )
+  }
+}
