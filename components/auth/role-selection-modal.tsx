@@ -41,8 +41,11 @@ export function RoleSelectionModal() {
 
       // Update localStorage
       localStorage.setItem('userRole', role)
+      
+      // Give server time to set cookie
+      await new Promise(resolve => setTimeout(resolve, 500))
 
-      // Redirect to home
+      // Redirect to home - auth provider will check /api/auth/me
       router.push('/')
     } catch (err) {
       setError('Failed to set role. Please try again.')

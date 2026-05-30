@@ -3,7 +3,7 @@ import { Pool } from 'pg'
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: { rejectUnauthorized: false },
 })
 
 export async function POST(request: NextRequest) {
@@ -39,11 +39,22 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0] Role set for user:', userId, 'to', role)
 
-    return NextResponse.json({
+    // Create response
+    const response = NextResponse.json({
       success: true,
       message: 'Role set successfully',
       user: result.rows[0],
     })
+
+    // Set user_id cookie
+    response.cookies.set('user_id', userId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    })
+
+    return response
   } catch (error) {
     console.error('[v0] Set role error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
