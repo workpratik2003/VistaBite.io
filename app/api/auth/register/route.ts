@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 })
 
 export async function POST(request: NextRequest) {
@@ -64,8 +65,19 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('[v0] Registration error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[v0] Error details:', errorMessage)
+    
+    // Check if table doesn't exist
+    if (errorMessage.includes('relation') && errorMessage.includes('does not exist')) {
+      return NextResponse.json(
+        { error: 'Database not initialized. Please try again in a moment.' },
+        { status: 503 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: 'Registration failed' },
+      { error: 'Registration failed. Please try again.' },
       { status: 500 }
     )
   }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { LocationSearch } from '@/components/location-search';
 import { MealFilter } from '@/components/meal-filter';
 import { ReelCard } from '@/components/reel-card';
@@ -153,12 +154,18 @@ export default function Page() {
               Discover authentic food experiences through Instagram reels
             </p>
             
-            <button
-              onClick={() => setHasSearched(true)}
-              className="px-8 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:bg-primary/90 transition-colors inline-block"
-            >
-              Start Exploring
-            </button>
+            <div className="flex gap-4 justify-center">
+              <Link href="/auth/login">
+                <Button variant="outline" size="lg">
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/auth/register">
+                <Button size="lg">
+                  Sign Up
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

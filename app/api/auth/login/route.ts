@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 })
 
 export async function POST(request: NextRequest) {
@@ -75,8 +76,18 @@ export async function POST(request: NextRequest) {
     return response
   } catch (error) {
     console.error('[v0] Login error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[v0] Error details:', errorMessage)
+    
+    if (errorMessage.includes('relation') && errorMessage.includes('does not exist')) {
+      return NextResponse.json(
+        { error: 'Database not initialized. Please try again in a moment.' },
+        { status: 503 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: 'Login failed' },
+      { error: 'Login failed. Please try again.' },
       { status: 500 }
     )
   }
