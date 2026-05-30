@@ -33,19 +33,14 @@ CREATE TABLE IF NOT EXISTS user_follows (
   UNIQUE(follower_id, following_id)
 );
 
--- Creator profiles view
-CREATE OR REPLACE VIEW creator_profiles AS
-SELECT 
-  id,
-  name,
-  bio,
-  profile_image_url,
-  (SELECT COUNT(*) FROM user_follows WHERE following_id = users.id) as follower_count,
-  (SELECT COUNT(*) FROM ugc_videos WHERE creator_id = users.id) as video_count,
-  created_at
-FROM users
-WHERE role = 'content_maker' AND is_public = TRUE
-ORDER BY follower_count DESC;
+-- Create table for creator followers (used to calculate follower count)
+-- This is a simple alternative until full view is needed
+CREATE TABLE IF NOT EXISTS creator_followers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  follower_count INTEGER DEFAULT 0,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
