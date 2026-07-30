@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/app/auth-provider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function LoginForm() {
-  const router = useRouter()
+  const { login } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
@@ -26,34 +27,9 @@ export function LoginForm() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.error || 'Login failed')
-        setLoading(false)
-        return
-      }
-
-      // Store user data
-      localStorage.setItem('userId', data.user.id)
-      localStorage.setItem('userEmail', data.user.email)
-      localStorage.setItem('userName', data.user.name)
-      localStorage.setItem('userRole', data.user.role)
-
-      // If role is pending, go to role selection
-      if (data.user.role === 'pending') {
-        router.push('/auth/select-role')
-      } else {
-        router.push('/')
-      }
+      await login(formData.email, formData.password)
     } catch (err) {
-      setError('Login failed. Please try again.')
+      setError(err instanceof Error ? err.message : 'Login failed. Please try again.')
       setLoading(false)
     }
   }

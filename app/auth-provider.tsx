@@ -81,8 +81,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (userData.role === 'pending') {
         router.push('/auth/select-role');
+      } else if (userData.role === 'content_maker') {
+        router.push('/dashboard/creator');
       } else {
-        router.push('/');
+        router.push('/dashboard/explorer');
       }
     } catch (error) {
       throw error;
@@ -144,7 +146,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const userData = await response.json();
       setUser(userData);
-      router.push('/');
+      
+      // Redirect to role-specific dashboard
+      if (role === 'content_maker') {
+        router.push('/dashboard/creator');
+      } else {
+        router.push('/dashboard/explorer');
+      }
     } catch (error) {
       throw error;
     }
