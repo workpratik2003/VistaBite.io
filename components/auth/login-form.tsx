@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function LoginForm() {
+  const router = useRouter()
   const { login } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
