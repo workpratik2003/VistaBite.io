@@ -6,7 +6,7 @@ import { MealFilter } from '@/components/meal-filter';
 import { ReelCard } from '@/components/reel-card';
 import SubmitReelForm from '@/components/submit-reel-form';
 import { type MealType } from '@/lib/mock-data';
-import { InstagramReel } from '@/lib/types';
+// import { InstagramReel } from '@/lib/types';
 import { UtensilsCrossed, MapPin, Search, Sparkles, CheckCircle, Sun } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ export default function Page() {
   const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMealTypes, setSelectedMealTypes] = useState<MealType[]>([]);
-  const [reels, setReels] = useState<InstagramReel[]>([]);
+  const [reels, setReels] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);

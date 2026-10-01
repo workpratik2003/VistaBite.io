@@ -6,7 +6,9 @@
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:auth": "node scripts/test-auth.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ai-sdk/groq": "^3.0.24",
