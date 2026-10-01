@@ -1,4 +1,10 @@
 import { Pool } from '@neondatabase/serverless'
+import type { 
+  User, 
+  SavedSpot, 
+  SavedReel, 
+  ProcessingJob 
+} from '@/lib/v2-types'
 
 // Exported so lib/session.ts can use the same pool instance
 export const pool = new Pool({
@@ -23,71 +29,11 @@ export interface Submission {
 /**
  * V2 User and Authentication Types
  */
-export interface User {
-  id: string;
-  email: string;
-  name: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface Session {
   id: string;
   user_id: string;
   expires_at: string;
   created_at: string;
-}
-
-/**
- * V2 Data Model Types (mirrors lib/v2-types.ts)
- */
-export interface SavedSpot {
-  id: string;
-  user_id: string;
-  name: string;
-  business_type: string | null;
-  cuisine: string | null;
-  address: string | null;
-  city: string | null;
-  state: string | null;
-  country: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  location_source: string;
-  location_confidence: number | null;
-  user_confirmed: boolean;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface SavedReel {
-  id: string;
-  saved_spot_id: string;
-  user_id: string;
-  instagram_url: string;
-  instagram_shortcode: string | null;
-  creator_name: string | null;
-  creator_handle: string | null;
-  caption: string | null;
-  thumbnail_url: string | null;
-  extracted_text: string | null;
-  transcript: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ProcessingJob {
-  id: string;
-  user_id: string;
-  saved_reel_id: string;
-  job_type: string;
-  status: string;
-  error_message: string | null;
-  started_at: string | null;
-  completed_at: string | null;
-  created_at: string;
-  updated_at: string;
 }
 
 /**

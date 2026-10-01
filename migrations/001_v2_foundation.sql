@@ -85,6 +85,23 @@ CREATE TRIGGER saved_spots_updated_at
   BEFORE UPDATE ON saved_spots
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+-- Automatically sync PostGIS location from latitude/longitude
+CREATE OR REPLACE FUNCTION sync_saved_spot_location()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.latitude IS NOT NULL AND NEW.longitude IS NOT NULL THEN
+    NEW.location := ST_SetSRID(ST_MakePoint(NEW.longitude, NEW.latitude), 4326);
+  ELSE
+    NEW.location := NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER sync_saved_spot_location_trigger
+  BEFORE INSERT OR UPDATE OF latitude, longitude ON saved_spots
+  FOR EACH ROW EXECUTE FUNCTION sync_saved_spot_location();
+
 -- ==========================================
 -- D. SAVED_REELS
 -- ==========================================

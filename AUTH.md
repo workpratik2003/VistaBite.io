@@ -54,6 +54,10 @@ Client → POST /api/auth/logout
 The token is **never** stored in localStorage, sessionStorage, or React state,
 exposed to client-side JavaScript, passed in URL parameters, or returned in API response bodies.
 
+- Protected API routes **must** perform server-side authorization.
+- User identity comes **only** from the server-side session.
+- Client-supplied `user_id` must **never** be trusted for authorization.
+
 ---
 
 ## Public Routes
@@ -78,26 +82,26 @@ exposed to client-side JavaScript, passed in URL parameters, or returned in API 
 
 | Route              | Protection                                           |
 |--------------------|------------------------------------------------------|
-| `/favorites`       | Middleware (cookie presence) + server-side verify    |
-| `/favorites/[id]`  | Middleware (cookie presence) + server-side verify    |
-| `/add-reel`        | Middleware (cookie presence) + server-side verify    |
+| `/favorites`       | Proxy (cookie presence) + server-side verify         |
+| `/favorites/[id]`  | Proxy (cookie presence) + server-side verify         |
+| `/add-reel`        | Proxy (cookie presence) + server-side verify         |
 | `/api/favorites/*` | `requireUser()` server-side (Phase 2)                |
 | `/api/reels/*`     | `requireUser()` server-side (Phase 2)                |
 
 ---
 
-## Middleware Responsibility (`middleware.ts`)
+## Proxy Responsibility (`proxy.ts`)
 
-**Location:** `/middleware.ts` (project root)
+**Location:** `/proxy.ts` (project root)
 **Runtime:** Edge (no Node.js crypto)
 
 What it does:
-- Cookie presence check only (no HMAC, no DB)
+- Lightweight navigation protection based on session-cookie presence only (no HMAC, no DB).
 - Protected page + no cookie → redirect to `/login?redirect=<path>`
 - `/login` or `/register` + cookie present → redirect to `/` (already logged in)
 - All other routes → pass through
 
-**Actual authorization happens in `requireUser()`** inside API route handlers and Server Components.
+**Actual authentication/authorization happens server-side using `lib/requireUser.ts`** and session verification inside API route handlers and Server Components.
 
 ---
 

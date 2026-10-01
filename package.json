@@ -6,8 +6,9 @@
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "tsc --noEmit",
     "test:auth": "node scripts/test-auth.mjs",
+    "test:location": "node scripts/test-postgis-location-sync.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
