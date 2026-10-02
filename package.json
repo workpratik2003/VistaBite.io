@@ -9,6 +9,7 @@
     "lint": "tsc --noEmit",
     "test:auth": "node scripts/test-auth.mjs",
     "test:location": "node scripts/test-postgis-location-sync.mjs",
+    "test:favorites": "node scripts/test-favorites.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

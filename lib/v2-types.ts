@@ -30,6 +30,8 @@ export interface User {
 export interface SavedSpot {
   id: string;
   user_id: string;
+  /** Permanent personal save number (#1, #2, ...). Never changes after creation. */
+  save_sequence: number;
   name: string;
   business_type: BusinessType | null;
   cuisine: string | null;
@@ -102,6 +104,7 @@ export interface CreateSavedSpotInput {
   location_confidence?: number;
   user_confirmed?: boolean;
   notes?: string;
+  // save_sequence is NOT accepted from the client — the server assigns it.
 }
 
 export interface UpdateSavedSpotInput {
@@ -142,6 +145,11 @@ export interface CreateProcessingJobInput {
  */
 export interface SavedSpotWithReels extends SavedSpot {
   reels: SavedReel[];
+}
+
+/** SavedSpot enriched with reel count — used for list views */
+export interface SpotWithReelCount extends SavedSpot {
+  reel_count: number;
 }
 
 export interface PaginatedResponse<T> {

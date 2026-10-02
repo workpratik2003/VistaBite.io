@@ -244,9 +244,44 @@ export async function deleteSession(token: string): Promise<void> {
  * V2 Saved Spots Functions
  */
 
+/** Helper: map a DB row to a SavedSpot object (includes save_sequence) */
+function rowToSavedSpot(row: Record<string, unknown>): SavedSpot {
+  return {
+    id: row.id as string,
+    user_id: row.user_id as string,
+    save_sequence: row.save_sequence as number,
+    name: row.name as string,
+    business_type: row.business_type as SavedSpot['business_type'],
+    cuisine: row.cuisine as string | null,
+    address: row.address as string | null,
+    city: row.city as string | null,
+    state: row.state as string | null,
+    country: row.country as string | null,
+    latitude: row.latitude != null ? Number(row.latitude) : null,
+    longitude: row.longitude != null ? Number(row.longitude) : null,
+    location_source: (row.location_source ?? 'manual') as SavedSpot['location_source'],
+    location_confidence: row.location_confidence != null ? Number(row.location_confidence) : null,
+    user_confirmed: row.user_confirmed as boolean,
+    notes: row.notes as string | null,
+    created_at: row.created_at as string,
+    updated_at: row.updated_at as string,
+  }
+}
+
 /**
  * Create a new saved spot for a user.
- * Returns the created spot.
+ *
+ * Concurrency strategy:
+ *   BEGIN
+ *   â†’ SELECT users row FOR UPDATE (row-level lock on this user)
+ *   â†’ SELECT COALESCE(MAX(save_sequence), 0) + 1 FROM saved_spots WHERE user_id = $1
+ *   â†’ INSERT saved_spots
+ *   COMMIT
+ *
+ * This prevents two concurrent inserts from getting the same sequence number
+ * because both must acquire the same user row lock before reading MAX.
+ *
+ * The client may NOT supply save_sequence.
  */
 export async function createSavedSpot(userId: string, data: {
   name: string;
@@ -263,10 +298,30 @@ export async function createSavedSpot(userId: string, data: {
   user_confirmed?: boolean;
   notes?: string;
 }): Promise<SavedSpot> {
+  const client = await pool.connect()
   try {
-    const result = await pool.query(
+    await client.query('BEGIN')
+
+    // Lock the user row to serialize concurrent spot inserts for this user.
+    // If another transaction is already allocating a sequence for this user,
+    // we will wait here until they commit/rollback.
+    await client.query(
+      'SELECT id FROM users WHERE id = $1 FOR UPDATE',
+      [userId]
+    )
+
+    // Safe max-based sequence: because we hold the user lock, no concurrent
+    // insert can compute MAX simultaneously for the same user.
+    const seqResult = await client.query(
+      'SELECT COALESCE(MAX(save_sequence), 0) + 1 AS next_seq FROM saved_spots WHERE user_id = $1',
+      [userId]
+    )
+    const nextSeq: number = seqResult.rows[0].next_seq
+
+    const result = await client.query(
       `INSERT INTO saved_spots (
         user_id,
+        save_sequence,
         name,
         business_type,
         cuisine,
@@ -280,10 +335,11 @@ export async function createSavedSpot(userId: string, data: {
         location_confidence,
         user_confirmed,
         notes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *`,
       [
         userId,
+        nextSeq,
         data.name,
         data.business_type ?? null,
         data.cuisine ?? null,
@@ -296,67 +352,47 @@ export async function createSavedSpot(userId: string, data: {
         data.location_source ?? 'manual',
         data.location_confidence ?? null,
         data.user_confirmed ?? false,
-        data.notes ?? null
+        data.notes ?? null,
       ]
     )
 
-    const row = result.rows[0]
-    return {
-      id: row.id,
-      user_id: row.user_id,
-      name: row.name,
-      business_type: row.business_type,
-      cuisine: row.cuisine,
-      address: row.address,
-      city: row.city,
-      state: row.state,
-      country: row.country,
-      latitude: row.latitude,
-      longitude: row.longitude,
-      location_source: row.location_source,
-      location_confidence: row.location_confidence,
-      user_confirmed: row.user_confirmed,
-      notes: row.notes,
-      created_at: row.created_at,
-      updated_at: row.updated_at
-    }
+    await client.query('COMMIT')
+    return rowToSavedSpot(result.rows[0])
   } catch (error) {
-    console.error('[v0] Error creating saved spot:', error)
+    await client.query('ROLLBACK')
+    console.error('[v2] Error creating saved spot:', error)
     throw error
+  } finally {
+    client.release()
   }
 }
 
 /**
- * Get all saved spots for a user.
+ * Get all saved spots for a user, ordered by save_sequence ASC.
+ * Includes reel_count for each spot.
  */
-export async function getSavedSpotsForUser(userId: string): Promise<SavedSpot[]> {
+export async function getSavedSpotsForUser(userId: string): Promise<Array<SavedSpot & { reel_count: number }>> {
   try {
     const result = await pool.query(
-      'SELECT * FROM saved_spots WHERE user_id = $1 ORDER BY created_at DESC',
+      `SELECT
+        ss.*,
+        COALESCE(r.reel_count, 0)::int AS reel_count
+       FROM saved_spots ss
+       LEFT JOIN (
+         SELECT saved_spot_id, COUNT(*) AS reel_count
+         FROM saved_reels
+         GROUP BY saved_spot_id
+       ) r ON r.saved_spot_id = ss.id
+       WHERE ss.user_id = $1
+       ORDER BY ss.save_sequence ASC`,
       [userId]
     )
-
     return result.rows.map(row => ({
-      id: row.id,
-      user_id: row.user_id,
-      name: row.name,
-      business_type: row.business_type,
-      cuisine: row.cuisine,
-      address: row.address,
-      city: row.city,
-      state: row.state,
-      country: row.country,
-      latitude: row.latitude,
-      longitude: row.longitude,
-      location_source: row.location_source,
-      location_confidence: row.location_confidence,
-      user_confirmed: row.user_confirmed,
-      notes: row.notes,
-      created_at: row.created_at,
-      updated_at: row.updated_at
+      ...rowToSavedSpot(row),
+      reel_count: Number(row.reel_count),
     }))
   } catch (error) {
-    console.error('[v0] Error fetching saved spots for user:', error)
+    console.error('[v2] Error fetching saved spots for user:', error)
     throw error
   }
 }
@@ -371,161 +407,88 @@ export async function getSavedSpotForUser(userId: string, spotId: string): Promi
       'SELECT * FROM saved_spots WHERE id = $1 AND user_id = $2',
       [spotId, userId]
     )
-
     if (result.rows.length === 0) return null
-
-    const row = result.rows[0]
-    return {
-      id: row.id,
-      user_id: row.user_id,
-      name: row.name,
-      business_type: row.business_type,
-      cuisine: row.cuisine,
-      address: row.address,
-      city: row.city,
-      state: row.state,
-      country: row.country,
-      latitude: row.latitude,
-      longitude: row.longitude,
-      location_source: row.location_source,
-      location_confidence: row.location_confidence,
-      user_confirmed: row.user_confirmed,
-      notes: row.notes,
-      created_at: row.created_at,
-      updated_at: row.updated_at
-    }
+    return rowToSavedSpot(result.rows[0])
   } catch (error) {
-    console.error('[v0] Error fetching saved spot for user:', error)
+    console.error('[v2] Error fetching saved spot for user:', error)
     throw error
   }
 }
 
 /**
+ * Get a saved spot with its reels (with ownership check).
+ */
+export async function getSavedSpotWithReels(
+  userId: string,
+  spotId: string
+): Promise<{ spot: SavedSpot; reels: SavedReel[] } | null> {
+  const spot = await getSavedSpotForUser(userId, spotId)
+  if (!spot) return null
+  const reels = await getSavedReelsForSpot(userId, spotId)
+  return { spot, reels }
+}
+
+/**
  * Update a saved spot for a user (with ownership check).
+ * save_sequence is intentionally excluded â€” it never changes.
  * Returns updated spot or null if not found or doesn't belong to user.
  */
 export async function updateSavedSpot(userId: string, spotId: string, data: {
   name?: string;
-  business_type?: string;
-  cuisine?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  latitude?: number;
-  longitude?: number;
-  location_source?: string;
-  location_confidence?: number;
+  business_type?: string | null;
+  cuisine?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  location_source?: string | null;
+  location_confidence?: number | null;
   user_confirmed?: boolean;
-  notes?: string;
+  notes?: string | null;
 }): Promise<SavedSpot | null> {
   try {
-    // Build dynamic update query
-    const updates = []
-    const values: any[] = [userId, spotId] // First two params for WHERE clause
-    let paramIndex = 3
+    const updates: string[] = []
+    const values: unknown[] = [userId, spotId]
+    let p = 3
 
-    if (data.name !== undefined) {
-      updates.push(`name = $${paramIndex++}`)
-      values.push(data.name)
-    }
-    if (data.business_type !== undefined) {
-      updates.push(`business_type = $${paramIndex++}`)
-      values.push(data.business_type)
-    }
-    if (data.cuisine !== undefined) {
-      updates.push(`cuisine = $${paramIndex++}`)
-      values.push(data.cuisine)
-    }
-    if (data.address !== undefined) {
-      updates.push(`address = $${paramIndex++}`)
-      values.push(data.address)
-    }
-    if (data.city !== undefined) {
-      updates.push(`city = $${paramIndex++}`)
-      values.push(data.city)
-    }
-    if (data.state !== undefined) {
-      updates.push(`state = $${paramIndex++}`)
-      values.push(data.state)
-    }
-    if (data.country !== undefined) {
-      updates.push(`country = $${paramIndex++}`)
-      values.push(data.country)
-    }
-    if (data.latitude !== undefined) {
-      updates.push(`latitude = $${paramIndex++}`)
-      values.push(data.latitude)
-    }
-    if (data.longitude !== undefined) {
-      updates.push(`longitude = $${paramIndex++}`)
-      values.push(data.longitude)
-    }
-    if (data.location_source !== undefined) {
-      updates.push(`location_source = $${paramIndex++}`)
-      values.push(data.location_source)
-    }
-    if (data.location_confidence !== undefined) {
-      updates.push(`location_confidence = $${paramIndex++}`)
-      values.push(data.location_confidence)
-    }
-    if (data.user_confirmed !== undefined) {
-      updates.push(`user_confirmed = $${paramIndex++}`)
-      values.push(data.user_confirmed)
-    }
-    if (data.notes !== undefined) {
-      updates.push(`notes = $${paramIndex++}`)
-      values.push(data.notes)
-    }
+    if (data.name !== undefined) { updates.push(`name = $${p++}`); values.push(data.name) }
+    if (data.business_type !== undefined) { updates.push(`business_type = $${p++}`); values.push(data.business_type) }
+    if (data.cuisine !== undefined) { updates.push(`cuisine = $${p++}`); values.push(data.cuisine) }
+    if (data.address !== undefined) { updates.push(`address = $${p++}`); values.push(data.address) }
+    if (data.city !== undefined) { updates.push(`city = $${p++}`); values.push(data.city) }
+    if (data.state !== undefined) { updates.push(`state = $${p++}`); values.push(data.state) }
+    if (data.country !== undefined) { updates.push(`country = $${p++}`); values.push(data.country) }
+    if (data.latitude !== undefined) { updates.push(`latitude = $${p++}`); values.push(data.latitude) }
+    if (data.longitude !== undefined) { updates.push(`longitude = $${p++}`); values.push(data.longitude) }
+    if (data.location_source !== undefined) { updates.push(`location_source = $${p++}`); values.push(data.location_source) }
+    if (data.location_confidence !== undefined) { updates.push(`location_confidence = $${p++}`); values.push(data.location_confidence) }
+    if (data.user_confirmed !== undefined) { updates.push(`user_confirmed = $${p++}`); values.push(data.user_confirmed) }
+    if (data.notes !== undefined) { updates.push(`notes = $${p++}`); values.push(data.notes) }
 
     if (updates.length === 0) {
-      // No updates to make
       return await getSavedSpotForUser(userId, spotId)
     }
 
-    // Add updated_at
     updates.push(`updated_at = NOW()`)
 
-    const query = `
-      UPDATE saved_spots
-      SET ${updates.join(', ')}
-      WHERE id = $2 AND user_id = $1
-      RETURNING *
-    `
-
-    const result = await pool.query(query, values)
-
+    const result = await pool.query(
+      `UPDATE saved_spots SET ${updates.join(', ')} WHERE id = $2 AND user_id = $1 RETURNING *`,
+      values
+    )
     if (result.rows.length === 0) return null
-
-    const row = result.rows[0]
-    return {
-      id: row.id,
-      user_id: row.user_id,
-      name: row.name,
-      business_type: row.business_type,
-      cuisine: row.cuisine,
-      address: row.address,
-      city: row.city,
-      state: row.state,
-      country: row.country,
-      latitude: row.latitude,
-      longitude: row.longitude,
-      location_source: row.location_source,
-      location_confidence: row.location_confidence,
-      user_confirmed: row.user_confirmed,
-      notes: row.notes,
-      created_at: row.created_at,
-      updated_at: row.updated_at
-    }
+    return rowToSavedSpot(result.rows[0])
   } catch (error) {
-    console.error('[v0] Error updating saved spot:', error)
+    console.error('[v2] Error updating saved spot:', error)
     throw error
   }
 }
 
 /**
  * Delete a saved spot for a user (with ownership check).
- * Returns true if deleted, false if not found or doesn't belong to user.
+ * Cascades to saved_reels.
+ * Does NOT renumber remaining spots.
  */
 export async function deleteSavedSpot(userId: string, spotId: string): Promise<boolean> {
   try {
@@ -533,10 +496,9 @@ export async function deleteSavedSpot(userId: string, spotId: string): Promise<b
       'DELETE FROM saved_spots WHERE id = $1 AND user_id = $2 RETURNING id',
       [spotId, userId]
     )
-
     return result.rows.length > 0
   } catch (error) {
-    console.error('[v0] Error deleting saved spot:', error)
+    console.error('[v2] Error deleting saved spot:', error)
     throw error
   }
 }
@@ -680,6 +642,29 @@ export async function getSavedReelForUser(userId: string, reelId: string): Promi
     }
   } catch (error) {
     console.error('[v0] Error fetching saved reel for user:', error)
+    throw error
+  }
+}
+
+/**
+ * Delete a saved reel for a user (with ownership check via spot ownership).
+ * Returns true if deleted, false if not found or doesn't belong to user.
+ */
+export async function deleteSavedReel(userId: string, reelId: string): Promise<boolean> {
+  try {
+    // Join to saved_spots to verify ownership via the spot, not just reel.user_id
+    const result = await pool.query(
+      `DELETE FROM saved_reels sr
+       USING saved_spots ss
+       WHERE sr.id = $1
+         AND sr.saved_spot_id = ss.id
+         AND ss.user_id = $2
+       RETURNING sr.id`,
+      [reelId, userId]
+    )
+    return result.rows.length > 0
+  } catch (error) {
+    console.error('[v2] Error deleting saved reel:', error)
     throw error
   }
 }
