@@ -234,6 +234,41 @@ await test('Duplicate reel for same user returns 409', async () => {
   if (s2 !== 409) throw new Error(`Expected 409 for duplicate, got ${s2}: ${JSON.stringify(b2)}`);
 });
 
+console.log('\n📋 Concurrency Test');
+
+await test('Concurrent spot creations are assigned distinct sequences (N and N+1)', async () => {
+  // We fire two createSpot requests simultaneously without awaiting the first one
+  const req1 = fetch(`${BASE}/api/favorites/spots`, {
+    method: 'POST',
+    headers: authHeaders(cookieA),
+    body: JSON.stringify({ name: 'Concurrent Spot 1', city: 'TestCity' })
+  });
+  const req2 = fetch(`${BASE}/api/favorites/spots`, {
+    method: 'POST',
+    headers: authHeaders(cookieA),
+    body: JSON.stringify({ name: 'Concurrent Spot 2', city: 'TestCity' })
+  });
+
+  const [res1, res2] = await Promise.all([req1, req2]);
+  
+  const body1 = await res1.json();
+  const body2 = await res2.json();
+
+  if (!res1.ok) throw new Error(`Concurrent req1 failed: ${JSON.stringify(body1)}`);
+  if (!res2.ok) throw new Error(`Concurrent req2 failed: ${JSON.stringify(body2)}`);
+
+  const seq1 = body1.spot.save_sequence;
+  const seq2 = body2.spot.save_sequence;
+
+  if (seq1 === seq2) {
+    throw new Error(`Race condition detected: both spots got sequence ${seq1}`);
+  }
+  
+  if (Math.abs(seq1 - seq2) !== 1) {
+    throw new Error(`Sequences not consecutive: ${seq1} and ${seq2}`);
+  }
+});
+
 // ────────────────────────────────────────────────────────────────────────────
 console.log('\n📋 Task 16 — PostGIS Coordinate Sync');
 // ────────────────────────────────────────────────────────────────────────────
