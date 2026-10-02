@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * /bitemap-test — Phase 1D-3 Development/Testing Page
+ * /bitemap-test — Phase 1D-4 Development/Testing Page
  *
  * Shows BiteMap with the authenticated user's saved spots as numbered markers.
- * Clicking a marker opens BiteMapPlaceCard.
+ * Clicking a marker opens BiteMapPlaceCard with loading, empty, and retryable error states.
  * This is a temporary development page; do not link it from the main nav.
  */
 
@@ -12,17 +12,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { BiteMap } from '@/components/bitemap/BiteMap';
 import { BiteMapPlaceCard } from '@/components/bitemap/BiteMapPlaceCard';
 import { Navbar } from '@/components/navbar';
-import { SavedSpot } from '@/lib/v2-types';
-import { X } from 'lucide-react';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface ReelSummary {
-  id: string;
-  instagram_url: string;
-  creator_handle: string | null;
-  creator_name: string | null;
-}
+import { SavedSpot, SavedReel } from '@/lib/v2-types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -42,11 +32,10 @@ export default function BiteMapTestPage() {
 
   // Selected spot state
   const [selectedSpot, setSelectedSpot] = useState<SavedSpot | null>(null);
-  const [selectedReels, setSelectedReels] = useState<ReelSummary[] | undefined>(undefined);
+  const [selectedReels, setSelectedReels] = useState<SavedReel[] | null>(null);
   const [reelsLoading, setReelsLoading] = useState(false);
+  const [reelsError, setReelsError] = useState<string | null>(null);
 
-  // Track whether the bottom sheet is expanded on mobile
-  const [sheetOpen, setSheetOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   // ── Fetch spots ──────────────────────────────────────────────────────────
@@ -75,43 +64,49 @@ export default function BiteMapTestPage() {
 
   // ── Fetch reels for selected spot ────────────────────────────────────────
 
+  const fetchReelsForSpot = useCallback(async (spotId: string) => {
+    setReelsLoading(true);
+    setReelsError(null);
+    setSelectedReels(null);
+
+    try {
+      const res = await fetch(`/api/favorites/spots/${spotId}`);
+      if (!res.ok) {
+        throw new Error(`Failed to load reels (${res.status})`);
+      }
+      const data = await res.json();
+      setSelectedReels(data.reels ?? []);
+    } catch (err: any) {
+      setReelsError(err.message || 'Could not load reels for this spot');
+    } finally {
+      setReelsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!selectedSpot) {
-      setSelectedReels(undefined);
+      setSelectedReels(null);
+      setReelsError(null);
+      setReelsLoading(false);
       return;
     }
-    let cancelled = false;
-    setReelsLoading(true);
-    setSelectedReels(undefined);
+    fetchReelsForSpot(selectedSpot.id);
+  }, [selectedSpot, fetchReelsForSpot]);
 
-    fetch(`/api/favorites/spots/${selectedSpot.id}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!cancelled) {
-          // The GET /api/favorites/spots/[id] response shape includes { spot, reels }
-          setSelectedReels(data.reels ?? []);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setSelectedReels([]);
-      })
-      .finally(() => {
-        if (!cancelled) setReelsLoading(false);
-      });
+  const handleRetryReels = useCallback(() => {
+    if (selectedSpot) {
+      fetchReelsForSpot(selectedSpot.id);
+    }
+  }, [selectedSpot, fetchReelsForSpot]);
 
-    return () => { cancelled = true; };
-  }, [selectedSpot]);
-
-  // ── Marker click handler ─────────────────────────────────────────────────
+  // ── Marker click & close handlers ───────────────────────────────────────
 
   const handleMarkerClick = useCallback((spot: SavedSpot) => {
     setSelectedSpot(spot);
-    setSheetOpen(true);
   }, []);
 
   const handleClose = useCallback(() => {
     setSelectedSpot(null);
-    setSheetOpen(false);
   }, []);
 
   // ── Derived ───────────────────────────────────────────────────────────────
@@ -129,7 +124,7 @@ export default function BiteMapTestPage() {
 
       {/* Dev banner */}
       <div className="shrink-0 bg-amber-50 border-b border-amber-200 text-amber-800 text-xs text-center py-1 font-medium">
-        ⚠️ Development page — Phase 1D-3 BiteMap Place Detail
+        ⚠️ Development page — Phase 1D-4 BiteMap Place Detail Polish
       </div>
 
       {/* Error banner */}
@@ -178,7 +173,10 @@ export default function BiteMapTestPage() {
           >
             <BiteMapPlaceCard
               spot={selectedSpot}
-              reels={reelsLoading ? undefined : selectedReels}
+              reels={selectedReels}
+              reelsLoading={reelsLoading}
+              reelsError={reelsError}
+              onRetryReels={handleRetryReels}
               onClose={handleClose}
               className="flex-1 rounded-none border-0 shadow-none"
             />
@@ -200,21 +198,24 @@ export default function BiteMapTestPage() {
               ref={cardRef}
               className={[
                 'md:hidden fixed bottom-0 left-0 right-0 z-50',
-                'max-h-[70vh] overflow-y-auto',
-                'rounded-t-2xl',
+                'max-h-[80vh] flex flex-col',
+                'bg-background rounded-t-2xl shadow-2xl',
                 'animate-in slide-in-from-bottom duration-300',
               ].join(' ')}
             >
               {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-1 bg-background rounded-t-2xl border border-b-0 border-border sticky top-0">
+              <div className="shrink-0 flex justify-center pt-3 pb-1 bg-background rounded-t-2xl border-t border-x border-border sticky top-0 z-10">
                 <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
               </div>
 
               <BiteMapPlaceCard
                 spot={selectedSpot}
-                reels={reelsLoading ? undefined : selectedReels}
+                reels={selectedReels}
+                reelsLoading={reelsLoading}
+                reelsError={reelsError}
+                onRetryReels={handleRetryReels}
                 onClose={handleClose}
-                className="rounded-none border-0 border-t-0 shadow-none"
+                className="flex-1 rounded-none border-0 border-t-0 shadow-none overflow-hidden"
               />
             </div>
           </>
