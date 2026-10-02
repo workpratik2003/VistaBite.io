@@ -1,15 +1,55 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+/**
+ * /bitemap-test — Phase 1D-3 Development/Testing Page
+ *
+ * Shows BiteMap with the authenticated user's saved spots as numbered markers.
+ * Clicking a marker opens BiteMapPlaceCard.
+ * This is a temporary development page; do not link it from the main nav.
+ */
+
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { BiteMap } from '@/components/bitemap/BiteMap';
+import { BiteMapPlaceCard } from '@/components/bitemap/BiteMapPlaceCard';
 import { Navbar } from '@/components/navbar';
 import { SavedSpot } from '@/lib/v2-types';
+import { X } from 'lucide-react';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ReelSummary {
+  id: string;
+  instagram_url: string;
+  creator_handle: string | null;
+  creator_name: string | null;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function buildInitialCenter(spots: SavedSpot[]): [number, number] {
+  const first = spots.find(
+    (s) => s.latitude != null && s.longitude != null && !isNaN(s.latitude!) && !isNaN(s.longitude!)
+  );
+  return first ? [first.longitude as number, first.latitude as number] : [-122.4194, 37.7749];
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function BiteMapTestPage() {
   const [spots, setSpots] = useState<SavedSpot[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedSpotId, setSelectedSpotId] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Selected spot state
+  const [selectedSpot, setSelectedSpot] = useState<SavedSpot | null>(null);
+  const [selectedReels, setSelectedReels] = useState<ReelSummary[] | undefined>(undefined);
+  const [reelsLoading, setReelsLoading] = useState(false);
+
+  // Track whether the bottom sheet is expanded on mobile
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // ── Fetch spots ──────────────────────────────────────────────────────────
 
   useEffect(() => {
     async function fetchSpots() {
@@ -18,14 +58,14 @@ export default function BiteMapTestPage() {
         const res = await fetch('/api/favorites/spots');
         if (!res.ok) {
           if (res.status === 401) {
-            throw new Error('You must be logged in to view your spots on the map.');
+            throw new Error('You must be logged in to view your BiteMap.');
           }
-          throw new Error('Failed to fetch spots');
+          throw new Error(`Failed to fetch spots (${res.status})`);
         }
         const data = await res.json();
-        setSpots(data.spots || []);
+        setSpots(data.spots ?? []);
       } catch (err: any) {
-        setError(err.message);
+        setFetchError(err.message);
       } finally {
         setLoading(false);
       }
@@ -33,66 +73,153 @@ export default function BiteMapTestPage() {
     fetchSpots();
   }, []);
 
-  const handleMarkerClick = (spot: SavedSpot) => {
-    setSelectedSpotId(spot.id);
-    console.log('Marker clicked:', spot);
-  };
+  // ── Fetch reels for selected spot ────────────────────────────────────────
 
-  // Center map on the first valid spot if available, otherwise fallback
-  const firstValidSpot = spots.find(
-    (s) => s.latitude != null && s.longitude != null && !isNaN(s.latitude) && !isNaN(s.longitude)
-  );
+  useEffect(() => {
+    if (!selectedSpot) {
+      setSelectedReels(undefined);
+      return;
+    }
+    let cancelled = false;
+    setReelsLoading(true);
+    setSelectedReels(undefined);
 
-  const center: [number, number] = firstValidSpot
-    ? [firstValidSpot.longitude as number, firstValidSpot.latitude as number]
-    : [-122.4194, 37.7749]; // San Francisco fallback
+    fetch(`/api/favorites/spots/${selectedSpot.id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) {
+          // The GET /api/favorites/spots/[id] response shape includes { spot, reels }
+          setSelectedReels(data.reels ?? []);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setSelectedReels([]);
+      })
+      .finally(() => {
+        if (!cancelled) setReelsLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [selectedSpot]);
+
+  // ── Marker click handler ─────────────────────────────────────────────────
+
+  const handleMarkerClick = useCallback((spot: SavedSpot) => {
+    setSelectedSpot(spot);
+    setSheetOpen(true);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setSelectedSpot(null);
+    setSheetOpen(false);
+  }, []);
+
+  // ── Derived ───────────────────────────────────────────────────────────────
+
+  const center = buildInitialCenter(spots);
+  const initialZoom = spots.some(
+    (s) => s.latitude != null && s.longitude != null
+  ) ? 12 : 3;
+
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
       <Navbar />
-      
-      <main className="flex-1 flex flex-col p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">BiteMap (Phase 1D-2)</h1>
-          <p className="text-gray-500 mt-2">
-            Development page verifying MapLibre GL JS markers connected to the V2 Favorites system.
-          </p>
+
+      {/* Dev banner */}
+      <div className="shrink-0 bg-amber-50 border-b border-amber-200 text-amber-800 text-xs text-center py-1 font-medium">
+        ⚠️ Development page — Phase 1D-3 BiteMap Place Detail
+      </div>
+
+      {/* Error banner */}
+      {fetchError && (
+        <div className="shrink-0 px-4 py-3 bg-red-50 text-red-700 text-sm border-b border-red-200">
+          {fetchError}
         </div>
+      )}
 
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-md">
-            {error}
-          </div>
-        )}
+      {/* Empty state banner */}
+      {!loading && !fetchError && spots.length === 0 && (
+        <div className="shrink-0 px-4 py-3 bg-yellow-50 text-yellow-800 text-sm border-b border-yellow-200">
+          You have no saved places yet, or none have valid coordinates.
+        </div>
+      )}
 
-        {!loading && !error && spots.length === 0 && (
-          <div className="mb-4 p-4 bg-yellow-50 text-yellow-800 rounded-md">
-            You have no saved places yet, or none of them have valid coordinates.
-          </div>
-        )}
+      {/* ── Main layout ── */}
+      <div className="flex-1 relative flex min-h-0">
 
-        {selectedSpotId && (
-          <div className="mb-4 p-4 bg-blue-50 text-blue-800 rounded-md text-sm font-mono">
-            Selected Spot ID: {selectedSpotId} (check browser console for full spot data)
-          </div>
-        )}
-
-        <div className="flex-1 relative rounded-xl overflow-hidden border border-gray-200 shadow-sm min-h-[500px]">
+        {/* Map — always visible */}
+        <div className="flex-1 relative min-h-0">
           {loading ? (
-             <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
-               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-             </div>
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+            </div>
           ) : (
             <BiteMap
               initialCenter={center}
-              initialZoom={firstValidSpot ? 12 : 3}
+              initialZoom={initialZoom}
               className="w-full h-full"
               spots={spots}
               onMarkerClick={handleMarkerClick}
             />
           )}
         </div>
-      </main>
+
+        {/* ── Desktop: side panel ── */}
+        {selectedSpot && (
+          <div
+            className={[
+              'hidden md:flex flex-col',
+              'w-80 lg:w-96 border-l border-border bg-background',
+              'overflow-y-auto',
+              'transition-all duration-300 ease-in-out',
+            ].join(' ')}
+          >
+            <BiteMapPlaceCard
+              spot={selectedSpot}
+              reels={reelsLoading ? undefined : selectedReels}
+              onClose={handleClose}
+              className="flex-1 rounded-none border-0 shadow-none"
+            />
+          </div>
+        )}
+
+        {/* ── Mobile: bottom sheet ── */}
+        {selectedSpot && (
+          <>
+            {/* Scrim */}
+            <div
+              className="md:hidden fixed inset-0 bg-black/40 z-40 transition-opacity"
+              onClick={handleClose}
+              aria-hidden
+            />
+
+            {/* Sheet */}
+            <div
+              ref={cardRef}
+              className={[
+                'md:hidden fixed bottom-0 left-0 right-0 z-50',
+                'max-h-[70vh] overflow-y-auto',
+                'rounded-t-2xl',
+                'animate-in slide-in-from-bottom duration-300',
+              ].join(' ')}
+            >
+              {/* Drag handle */}
+              <div className="flex justify-center pt-3 pb-1 bg-background rounded-t-2xl border border-b-0 border-border sticky top-0">
+                <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+              </div>
+
+              <BiteMapPlaceCard
+                spot={selectedSpot}
+                reels={reelsLoading ? undefined : selectedReels}
+                onClose={handleClose}
+                className="rounded-none border-0 border-t-0 shadow-none"
+              />
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
