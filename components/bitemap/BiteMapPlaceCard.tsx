@@ -71,6 +71,18 @@ function formatDisplayUrl(url: string): string {
   }
 }
 
+/**
+ * Format distance from meters into a human-readable string.
+ * PostGIS distance_meters is authoritative; no client-side geospatial math.
+ */
+function formatDistance(meters: number): string {
+  if (meters < 1000) {
+    return `${Math.round(meters)} m`;
+  }
+  // Round to at most 1 decimal place, trimming trailing zeros
+  return `${(meters / 1000).toFixed(1).replace(/\.0$/, '')} km`;
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 export interface BiteMapPlaceCardProps {
@@ -87,6 +99,8 @@ export interface BiteMapPlaceCardProps {
   onClose: () => void;
   /** Optional extra class names applied to the card root */
   className?: string;
+  /** Distance from user location in meters (Nearby mode only) */
+  distanceMeters?: number;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -99,6 +113,7 @@ export function BiteMapPlaceCard({
   onRetryReels,
   onClose,
   className,
+  distanceMeters,
 }: BiteMapPlaceCardProps) {
   const directionsUrl = buildDirectionsUrl(spot);
   const hasDirections = directionsUrl !== '#';
@@ -131,7 +146,7 @@ export function BiteMapPlaceCard({
           <X className="h-4 w-4" />
         </button>
 
-        {/* Sequence badge + Business type badge */}
+        {/* Sequence badge + Business type badge + optional distance badge */}
         <div className="flex items-center gap-2 mb-2 pr-8 flex-wrap">
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary text-primary-foreground shadow-sm">
             <Hash className="h-3 w-3" />
@@ -140,6 +155,12 @@ export function BiteMapPlaceCard({
           {businessLabel && (
             <span className="text-xs px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium border border-border/50">
               {businessLabel}
+            </span>
+          )}
+          {distanceMeters !== undefined && distanceMeters !== null && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary shadow-sm">
+              <MapPin className="h-3 w-3" />
+              {formatDistance(distanceMeters)}
             </span>
           )}
         </div>

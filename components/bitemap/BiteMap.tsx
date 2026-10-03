@@ -37,6 +37,12 @@ export interface BiteMapProps {
    * Callback fired when a spot marker is clicked
    */
   onMarkerClick?: (spot: SavedSpot) => void;
+  /**
+   * Optional current user location (browser GPS).
+   * When provided, a distinct current-location marker is rendered
+   * and the map is centered on it.
+   */
+  userLocation?: { latitude: number; longitude: number } | null;
 }
 
 export function BiteMap({
@@ -47,14 +53,17 @@ export function BiteMap({
   onLoad,
   spots,
   onMarkerClick,
+  userLocation,
 }: BiteMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<Map | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // Keep track of active markers to clean them up when spots change
+  // Keep track of saved-spot markers to clean them up when spots change
   const markersRef = useRef<maplibregl.Marker[]>([]);
+  // Keep track of the current-location marker separately
+  const userLocationMarkerRef = useRef<maplibregl.Marker | null>(null);
 
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
@@ -144,6 +153,40 @@ export function BiteMap({
       markersRef.current.push(marker);
     });
   }, [spots, isLoaded, onMarkerClick]);
+
+  // Effect to handle current-location marker and map centering
+  useEffect(() => {
+    if (!isLoaded || !mapInstanceRef.current) return;
+
+    const map = mapInstanceRef.current;
+
+    // Clean up existing current-location marker
+    if (userLocationMarkerRef.current) {
+      userLocationMarkerRef.current.remove();
+      userLocationMarkerRef.current = null;
+    }
+
+    // If userLocation is provided, create marker and center map
+    if (userLocation) {
+      const el = document.createElement('div');
+      el.className =
+        'w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold shadow-lg animate-pulse border-2 border-white hover:bg-blue-600 transition-colors z-10';
+      el.textContent = '📍'; // GPS/current-location marker
+
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat([userLocation.longitude, userLocation.latitude])
+        .addTo(map);
+
+      userLocationMarkerRef.current = marker;
+
+      // Fly to the user's location with a reasonable zoom level
+      map.flyTo({
+        center: [userLocation.longitude, userLocation.latitude],
+        zoom: 14,
+        essential: true, // This animation is considered essential
+      });
+    }
+  }, [isLoaded, userLocation]);
 
   return (
     <div className={`relative w-full h-full ${className}`}>

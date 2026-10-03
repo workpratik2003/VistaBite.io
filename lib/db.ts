@@ -398,6 +398,53 @@ export async function getSavedSpotsForUser(userId: string): Promise<Array<SavedS
 }
 
 /**
+ * Get nearby saved spots for a user within a given radius (in km).
+ * Uses PostGIS ST_DWithin for spatial filtering and ST_Distance for ordering.
+ * Returns spots with computed distance_meters.
+ */
+export async function getNearbySavedSpotsForUser(
+  userId: string,
+  latitude: number,
+  longitude: number,
+  radiusKm: number
+): Promise<Array<SavedSpot & { distance_meters: number }>> {
+  const radiusMeters = radiusKm * 1000
+
+  try {
+    const result = await pool.query<
+      Record<string, unknown>
+    >(
+      `SELECT
+         ss.*,
+         ST_Distance(
+           ss.location,
+           ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography
+         ) AS distance_meters
+       FROM saved_spots ss
+       WHERE ss.user_id = $1
+         AND ss.location IS NOT NULL
+         AND ST_DWithin(
+           ss.location,
+           ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography,
+           $4
+         )
+       ORDER BY
+         distance_meters ASC,
+         ss.save_sequence ASC`,
+      [userId, latitude, longitude, radiusMeters]
+    )
+
+    return result.rows.map((row) => ({
+      ...rowToSavedSpot(row),
+      distance_meters: Number(row.distance_meters),
+    }))
+  } catch (error) {
+    console.error('[v2] Error fetching nearby saved spots:', error)
+    throw error
+  }
+}
+
+/**
  * Get a specific saved spot for a user (with ownership check).
  * Returns spot or null if not found or doesn't belong to user.
  */

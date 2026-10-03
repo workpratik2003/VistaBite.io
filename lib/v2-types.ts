@@ -152,6 +152,14 @@ export interface SpotWithReelCount extends SavedSpot {
   reel_count: number;
 }
 
+/**
+ * NearbySavedSpot - a SavedSpot with computed distance for radius queries
+ * Used only for Nearby API responses and UI - not persisted
+ */
+export interface NearbySavedSpot extends SavedSpot {
+  distance_meters: number;
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;
