@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { BookmarkCheck } from 'lucide-react';
 import { getSessionCookieName, parseCookies } from '@/lib/auth';
 import { getSessionUser } from '@/lib/session';
 import { BiteMapPage } from '@/components/bitemap/BiteMapPage';
@@ -25,11 +24,9 @@ export default async function FavoritesMapPage() {
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden">
-      <BiteMapPage
-        heading="My BiteMap"
-        subheading="Explore your saved food spots on a map. Use your location to see what\'s nearby."
-      />
-    </div>
+    <BiteMapPage
+      heading="My BiteMap"
+      subheading="Explore your saved food spots on a map. Use your location to see what\'s nearby."
+    />
   );
 }

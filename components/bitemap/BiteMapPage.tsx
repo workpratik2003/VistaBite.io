@@ -19,7 +19,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { BiteMap } from '@/components/bitemap/BiteMap';
 import { BiteMapPlaceCard } from '@/components/bitemap/BiteMapPlaceCard';
 import { SavedSpot, SavedReel, NearbySavedSpot } from '@/lib/v2-types';
-import { Navbar } from '@/components/navbar';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -293,17 +292,13 @@ export function BiteMapPage({
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className={`flex flex-col h-screen bg-gray-50 overflow-hidden ${className}`}>
-      <Navbar />
+    <div className={`flex flex-col bg-gray-50 overflow-hidden h-below-navbar ${className}`}>
 
-      {/* Controls bar */}
+      {/* ── Controls bar ── */}
       <div className="shrink-0 border-b border-gray-200 bg-white/80 backdrop-blur px-4 py-3 space-y-2">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-foreground">{heading}</h1>
-            {subheading && (
-              <p className="text-sm text-muted-foreground">{subheading}</p>
-            )}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold text-foreground leading-tight truncate">{heading}</h1>
           </div>
 
           {/* "Use My Location" button / status */}
@@ -336,7 +331,8 @@ export function BiteMapPage({
               {location.message}
               <button
                 onClick={requestLocation}
-                className="underline font-medium hover:no-underline ml-1"
+                className="underline font-medium hover:no-underline ml-1 focus:outline-none focus:ring-1 focus:ring-red-400 rounded"
+                aria-label="Retry location request"
               >
                 Retry
               </button>
@@ -344,20 +340,20 @@ export function BiteMapPage({
           )}
 
           {/* Radius selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-700 font-medium">Radius:</span>
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-sm text-gray-700 font-medium whitespace-nowrap">Radius:</span>
+            <div className="flex items-center gap-1 flex-wrap">
               {AVAILABLE_RADII_KM.map((radius) => (
                 <button
                   key={radius}
                   onClick={() => handleRadiusChange(radius)}
                   disabled={location.status !== 'granted'}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors border ${
+                  className={`px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors border focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 ${
                     selectedRadius === radius
                       ? 'bg-blue-600 text-white border-blue-600'
                       : location.status !== 'granted'
                       ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                   }`}
                   aria-label={`${radius} km radius`}
                   aria-pressed={selectedRadius === radius}
@@ -369,45 +365,40 @@ export function BiteMapPage({
           </div>
         </div>
 
-        {/* Radius change loading indicator */}
-        {nearbyLoading && (
-          <div className="flex items-center gap-2 text-xs text-gray-600">
-            <span className="inline-block w-3 h-3 rounded-full border-2 border-gray-600 border-t-transparent animate-spin" />
-            Refreshing nearby places within {selectedRadius} km...
+        {/* Status summary row — loading / count / empty */}
+        {location.status === 'granted' && (
+          <div className="min-h-[1.5rem]">
+            {nearbyLoading ? (
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span className="inline-block w-3 h-3 rounded-full border-2 border-gray-500 border-t-transparent animate-spin" aria-hidden />
+                <span>Refreshing nearby places within {selectedRadius} km…</span>
+              </div>
+            ) : nearbySpots.length === 0 ? (
+              <p className="text-xs text-amber-700">
+                No saved places within {selectedRadius} km. Try a larger radius.
+              </p>
+            ) : (
+              <p className="text-xs text-gray-600">
+                Showing{' '}
+                <span className="font-semibold text-gray-800">{nearbySpots.length}</span>{' '}
+                saved place{nearbySpots.length !== 1 ? 's' : ''} within {selectedRadius} km.
+              </p>
+            )}
           </div>
         )}
 
-        {/* Nearby count / empty state */}
-        {!nearbyLoading && location.status === 'granted' && (
-          <>
-            {nearbySpots.length === 0 ? (
-              <div className="flex items-center gap-2 text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
-                <span>
-                  No saved places within {selectedRadius} km.
-                </span>
-                <span className="text-yellow-600">
-                  Try a larger radius.
-                </span>
-              </div>
-            ) : (
-              <div className="text-sm text-gray-700">
-                Showing {nearbySpots.length} saved place{nearbySpots.length !== 1 ? 's' : ''} within {selectedRadius} km.
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Nearby API error state (not empty) */}
+        {/* Nearby API error */}
         {nearbyError && (
-          <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-            <span className="shrink-0 font-bold">✕</span>
+          <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <span className="shrink-0 font-bold mt-0.5" aria-hidden>✕</span>
             <span className="flex-1">{nearbyError}</span>
             {location.status === 'granted' && (
               <button
                 onClick={() =>
                   fetchNearbySpots(location.latitude, location.longitude, selectedRadius)
                 }
-                className="underline font-medium hover:no-underline ml-1 shrink-0"
+                className="underline font-medium hover:no-underline ml-1 shrink-0 focus:outline-none focus:ring-1 focus:ring-red-400 rounded"
+                aria-label="Retry loading nearby places"
               >
                 Retry
               </button>
@@ -415,25 +406,25 @@ export function BiteMapPage({
           </div>
         )}
 
-        {/* Auth warning banner */}
+        {/* Favorites fetch error (auth / network) */}
         {globalFetchError && (
-          <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-            <span className="shrink-0 font-bold">✕</span>
+          <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <span className="shrink-0 font-bold mt-0.5" aria-hidden>✕</span>
             <span className="flex-1">{globalFetchError}</span>
           </div>
         )}
 
-        {/* Location error banner */}
+        {/* Location permission denied */}
         {location.status === 'denied' && (
-          <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-            <span className="shrink-0 font-bold">✕</span>
+          <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <span className="shrink-0 font-bold mt-0.5" aria-hidden>✕</span>
             <span className="flex-1">
-              Location permission was denied. Enable location access in your browser
-              settings and click "Use My Location" to try again.
+              Location access was denied. Enable it in your browser settings, then click "Use My Location".
             </span>
             <button
               onClick={requestLocation}
-              className="underline font-medium hover:no-underline ml-1 shrink-0"
+              className="underline font-medium hover:no-underline ml-1 shrink-0 focus:outline-none focus:ring-1 focus:ring-red-400 rounded"
+              aria-label="Retry location request"
             >
               Retry
             </button>

@@ -10,6 +10,19 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+
+  /**
+   * h-below-navbar
+   * Height of the viewport minus the sticky navbar (h-14 = 3.5rem).
+   * The `vh` declaration is the fallback for older browsers.
+   * The `dvh` declaration overrides it in browsers that support dynamic
+   * viewport height (Chrome 108+, Firefox 101+, Safari 15.4+), which
+   * correctly excludes the mobile browser's own address bar / tab bar.
+   */
+  .h-below-navbar {
+    height: calc(100vh - 3.5rem);
+    height: calc(100dvh - 3.5rem);
+  }
 }
 
 @layer base {
